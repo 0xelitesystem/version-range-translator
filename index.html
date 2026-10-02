@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Version Range Translator</title>
+<meta name="description" content="Paste one version range and see how npm, Cargo, Composer, PEP 440 and RubyGems each read it, as plain comparators tested against versions you list. Runs entirely in your browser.">
+<link rel="canonical" href="https://0xelitesystem.github.io/version-range-translator/">
+<meta property="og:title" content="Version Range Translator">
+<meta property="og:description" content="One version range, five grammars: npm, Cargo, Composer, PEP 440 and RubyGems, side by side, tested against your own version list.">
+<meta property="og:url" content="https://0xelitesystem.github.io/version-range-translator/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Version Range Translator","applicationCategory":"DeveloperApplication","operatingSystem":"Any (browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://0xelitesystem.github.io/version-range-translator/","author":{"@type":"Person","name":"0xelitesystem","url":"https://elitesystem.ai"}}
+</script>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('vrt-theme');
+    if (t !== 'dark' && t !== 'light') {
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {
+    var l = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.setAttribute('data-theme', l ? 'light' : 'dark');
+  }
+})();
+</script>
+<style>
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --bg-deep: #050505;
+  --surface: #111110;
+  --surface-2: #161614;
+  --ink: #e8e8e3;
+  --ink-soft: #a8a8a3;
+  --muted: #6e6e68;
+  --rule: #1f1f1d;
+  --rule-2: #2a2a27;
+  --accent: #d4ff3a;
+  --accent-2: #ffb454;
+  --on-accent: #0a0a0a;
+  --ok: #7ddc7d;
+  --warn: #ffb454;
+  --err: #ff6450;
+  --info: #6fd3e0;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e8ebef;
+  --bg-deep: #f4f5f8;
+  --surface: #dee2e8;
+  --surface-2: #d3d7df;
+  --ink: #0a0a0a;
+  --ink-soft: #2a2a27;
+  --muted: #6e6e68;
+  --rule: #c8cdd5;
+  --rule-2: #aab0ba;
+  --accent: #2d6b00;
+  --accent-2: #8a4d00;
+  --on-accent: #ffffff;
+  --ok: #1a5c2e;
+  --warn: #8a4d00;
+  --err: #a82d14;
+  --info: #0f5c60;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-wrap: break-word;
+}
+code, pre, textarea, input[type="text"], .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+a { color: var(--accent); }
+a:hover { color: var(--accent-2); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+.tagline { color: var(--ink-soft); margin: 0; max-width: 70ch; }
+h2 { font-size: 17px; margin: 34px 0 10px; }
+h3 { font-size: 13px; margin: 0 0 6px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; }
+p { margin: 0 0 12px; }
+.small { font-size: 13px; color: var(--ink-soft); }
+button {
+  background: var(--surface-2); color: var(--ink); border: 1px solid var(--rule-2);
+  border-radius: 6px; padding: 8px 12px; cursor: pointer; font: inherit; font-size: 13px;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--on-accent); }
+.lead { border: 1px solid var(--rule-2); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 14px 16px; margin: 22px 0 0; }
+.lead p:last-child { margin-bottom: 0; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px; margin-top: 18px; }
+label.f { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+input[type="text"], textarea, select {
+  width: 100%; background: var(--bg); color: var(--ink);
+  border: 1px solid var(--rule-2); border-radius: 6px; padding: 10px 12px; font-size: 14px;
+}
+select { font: inherit; font-size: 14px; width: auto; min-width: 220px; }
+textarea { min-height: 170px; resize: vertical; line-height: 1.5; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.check { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 14px; }
+.check input { margin-top: 4px; }
+.presets span { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 4px; }
+.err { color: var(--err); }
+.okc { color: var(--ok); }
+.warnc { color: var(--warn); }
+.infoc { color: var(--info); }
+.soft { color: var(--ink-soft); }
+.banner { border: 1px solid var(--err); color: var(--err); border-radius: 6px; padding: 10px 12px; margin-top: 12px; font-size: 14px; }
+.banner:empty { display: none; }
+.strip { border: 1px solid var(--rule-2); border-left: 3px solid var(--warn); background: var(--surface); border-radius: 6px; padding: 12px 14px; margin-top: 12px; }
+.strip ul { margin: 6px 0 0; padding-left: 18px; }
+.strip li { margin: 4px 0; }
+.cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; min-width: 0; }
+.card .nm { font-weight: 700; font-size: 15px; }
+.card .impl { font-size: 12px; color: var(--ink-soft); }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px; border: 1px solid; margin: 8px 0 6px; }
+.tag.v { color: var(--ok); border-color: var(--ok); }
+.tag.r { color: var(--err); border-color: var(--err); }
+.card .k { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px; }
+.card .val { font-size: 13px; word-break: break-word; }
+.card ul.notes { margin: 8px 0 0; padding-left: 16px; font-size: 13px; color: var(--ink-soft); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+caption { text-align: left; padding: 10px 12px; color: var(--ink-soft); font-size: 13px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid var(--rule); }
+th { background: var(--surface-2); font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+th[scope="row"] { background: var(--surface); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; white-space: nowrap; }
+td { min-width: 150px; }
+tr.diff th[scope="row"] { border-left: 3px solid var(--warn); }
+.cell .p { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--ink-soft); word-break: break-all; }
+.cell .m { font-weight: 600; margin-top: 2px; }
+.cell .a { font-size: 12px; margin-top: 2px; }
+.trgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }
+.tr { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; min-width: 0; }
+.tr code { display: block; background: var(--bg); border: 1px solid var(--rule-2); border-radius: 6px; padding: 8px 10px; margin: 6px 0; font-size: 13px; word-break: break-all; }
+.tr ul { margin: 6px 0 0; padding-left: 16px; font-size: 13px; }
+.selftest { border: 1px solid var(--rule-2); border-radius: 8px; background: var(--surface); padding: 14px 16px; margin-top: 10px; }
+.selftest .score { font-size: 20px; font-weight: 700; }
+.selftest ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+details { margin-top: 10px; }
+summary { cursor: pointer; font-weight: 600; }
+.ref { font-size: 14px; }
+.ref table { font-size: 13px; }
+.ref td { min-width: 0; }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 980px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  select { width: 100%; min-width: 0; }
+  h1 { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <h1>Version Range Translator</h1>
+      <p class="tagline">Type one version range. See how npm, Cargo, Composer, PEP 440 and RubyGems each read that exact string, as plain comparators tested against versions you list.</p>
+    </div>
+    <button class="themebtn" id="theme-toggle" type="button" aria-label="Switch colour theme">Theme</button>
+  </div>
+
+  <div class="lead">
+    <p><strong>The same string, five readings.</strong> <code>~1.2</code> stops below 1.3 in npm and Cargo but below 2.0 in Composer. <code>~&gt;1.2</code> stops below 1.3 in npm but below 2.0 in RubyGems. A bare <code>1.2</code> is 1.2.x in npm, below 2.0.0 in Cargo, exactly 1.2.0 in Composer and RubyGems, and not a valid specifier in PEP 440. Each ecosystem is following its own published or implemented grammar. This page runs a port of each one, offline.</p>
+  </div>
+
+  <div class="panel" role="group" aria-labelledby="in-h">
+    <h2 id="in-h" style="margin-top:0">Input</h2>
+    <div class="grid2">
+      <div>
+        <label class="f" for="range">Version range (one string)</label>
+        <input type="text" id="range" spellcheck="false" autocomplete="off" autocapitalize="off" maxlength="512" value="~1.2">
+        <div class="row presets" role="group" aria-label="Presets">
+          <span>Presets</span>
+          <button type="button" data-preset="0">~1.2</button>
+          <button type="button" data-preset="1">~&gt;1.2</button>
+          <button type="button" data-preset="2">~=1.2</button>
+          <button type="button" data-preset="3">bare 1.2</button>
+          <button type="button" data-preset="4">^1.2.3-beta.2</button>
+          <button type="button" data-preset="5">&gt;=1.2 || &lt;1.0</button>
+          <button type="button" data-preset="6">&gt;=1.2, &lt;1.5</button>
+          <button type="button" data-preset="7">PEP 440 candidate set</button>
+        </div>
+        <label class="check"><input type="checkbox" id="pre"> <span>PEP 440: accept pre-releases (<code>--pre</code>). Means <code>SpecifierSet.filter(prereleases=True)</code>.</span></label>
+      </div>
+      <div>
+        <label class="f" for="versions">Test versions, one per line (each engine parses the literal text)</label>
+        <textarea id="versions" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+    <div class="banner" id="inerr" role="alert" aria-live="assertive"></div>
+  </div>
+
+  <h2 id="div-h">Where the answers differ</h2>
+  <div class="strip" id="divstrip" aria-live="polite"></div>
+
+  <h2 id="cards-h">Five readings</h2>
+  <div class="cards" id="cards"></div>
+
+  <h2 id="tbl-h">Test versions</h2>
+  <p class="small">Each cell shows how that ecosystem parses the literal line, whether it matches the requirement, and whether the ecosystem's default policy would admit it. A row marked on the left gets different answers across the valid columns.</p>
+  <div class="tablewrap" role="region" aria-labelledby="tbl-h" tabindex="0"><table id="tbl"><caption>Every test version under every grammar</caption><thead></thead><tbody></tbody></table></div>
+
+  <h2 id="tr-h">Equivalent spelling</h2>
+  <p class="small">Pick a source ecosystem. If its reading reduces to one interval (an optional lower bound and an optional upper bound), the page writes that interval in each target's plain comparator syntax, then re-reads every emitted string with the target's own engine against your test versions. The live agreement count is the only claim. No emitted form is claimed to be exactly equivalent.</p>
+  <div class="row">
+    <label class="f" for="src" style="margin:0">Source ecosystem</label>
+    <select id="src">
+      <option value="npm">npm</option>
+      <option value="cargo">Cargo</option>
+      <option value="composer">Composer</option>
+      <option value="pep">PEP 440</option>
+      <option value="ruby">RubyGems</option>
+    </select>
+  </div>
+  <div id="trout" aria-live="polite"></div>
+
+  <h2 id="st-h">Self test</h2>
+  <p class="small">Runs on load. Expected values were produced by the real engines and by the upstream test suites, then frozen into this page. The count below is computed now, in your browser.</p>
+  <div class="row"><button type="button" class="primary" id="runtest">Run self test</button></div>
+  <div class="selftest" id="stout" aria-live="polite">Not run yet.</div>
+
+  <h2 id="ref-h">Separators and pre-releases, per grammar</h2>
+  <div class="ref">
+    <div class="tablewrap" role="region" aria-labelledby="ref-h" tabindex="0"><table>
+      <caption>What joins comparators, and where pre-releases are decided</caption>
+      <thead><tr><th scope="col">Grammar</th><th scope="col">Comma</th><th scope="col">Whitespace</th><th scope="col">OR</th><th scope="col">Hyphen range</th><th scope="col">Pre-release: matches the requirement</th><th scope="col">Pre-release: admitted by default</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">npm</th><td>Refused</td><td>AND</td><td><code>||</code></td><td>Yes</td><td>Only if a comparator with the same major.minor.patch carries a pre-release</td><td>Same as the match</td></tr>
+        <tr><th scope="row">Cargo</th><td>AND (required)</td><td>Refused between comparators</td><td>Refused</td><td>No</td><td>Same rule as npm</td><td>Same as the match</td></tr>
+        <tr><th scope="row">Composer</th><td>AND</td><td>AND</td><td><code>||</code> or <code>|</code></td><td>Yes</td><td>Matching ignores stability, so <code>&gt;=1.2</code> matches <code>1.3.0-RC1</code></td><td>Held back by minimum-stability, which defaults to stable. A stability flag such as <code>@beta</code> overrides it. In a root requirement, a single-token constraint that names a pre-release, such as <code>^1.2.3-beta.2</code>, sets that flag by itself</td></tr>
+        <tr><th scope="row">PEP 440</th><td>AND</td><td>Refused between clauses</td><td>Refused</td><td>No</td><td>Exclusive comparisons have extra rules (<code>&lt;1.5</code> refuses <code>1.5.0rc1</code>)</td><td>Depends on the candidate set: pre-releases are kept only when no final or post release matches, or when a specifier names a pre-release</td></tr>
+        <tr><th scope="row">RubyGems</th><td>Separate requirement strings (this page splits on commas)</td><td>Refused between comparators</td><td>Refused</td><td>No</td><td><code>Gem::Requirement#satisfied_by?</code> admits pre-releases</td><td><code>Gem::Dependency#match?</code> excludes them unless the requirement names one</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:10px">PEP 440 notes: already-installed pre-releases are not modelled. The <code>--pre</code> box above models an explicit user request. Composer notes: this page models the default <code>minimum-stability</code>, explicit <code>@</code> stability flags, and the flag Composer infers when a root requirement names a pre-release in a single-token constraint (<code>^1.2.3-beta.2</code> admits beta and above). It reads the range as your own <code>composer.json</code> require; a dependency's requirements get no inferred flag.</p>
+  </div>
+
+  <footer>
+    <p>Independent project. Not affiliated with, endorsed by, or sponsored by npm, the Rust project, Composer, the Python Packaging Authority (PyPA) or RubyGems. Product names are used only to say whose grammar each column ports.</p>
+    <p>Everything runs in this page. Nothing is uploaded and nothing is fetched. MIT licensed. Source, sources and third-party notices: <a href="https://github.com/0xelitesystem/version-range-translator">github.com/0xelitesystem/version-range-translator</a>. Built by <a href="https://elitesystem.ai">elitesystem.ai</a>.</p>
+  </footer>
+</div>
+<script>
+/* ENGINES-BEGIN */
+// Five version-range grammars, reimplemented from reading each project's source.
+// Each engine: parseRange(text) -> {ok, error, native, plain[], lower, upper, single, raw}
+//              parseVersion(text) -> {ok, norm, pre, error}
+//              matches(range, text) -> true | false | null (null: not a valid version here)
+var VRT = (function () {
+  'use strict';
+
+  // ---------------------------------------------------------------- shared
+  function bigCmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+  function sign(n) { return n < 0 ? -1 : n > 0 ? 1 : 0; }
+  function isDigitStr(s) { return /^[0-9]+$/.test(s); }
+
+  // =============================================================== npm
+  // node-semver 7.8.5, strict (non-loose) mode, includePrerelease off.
+  var NPM = (function () {
+    var MAXLEN = 256, MAXBUILD = 250, MAXSAFE = Number.MAX_SAFE_INTEGER;
+    // node-semver bounds every greedy token before compiling ("safe" regexes).
+    function bound(p) {
+      var pairs = [['\\s', 1], ['\\d', MAXLEN], ['[a-zA-Z0-9-]', MAXBUILD]];
+      pairs.forEach(function (t) {
+        p = p.split(t[0] + '*').join(t[0] + '{0,' + t[1] + '}')
+             .split(t[0] + '+').join(t[0] + '{1,' + t[1] + '}');
+      });
+      return p;
+    }
+    var NUM = '0|[1-9]\\d*', NUML = '\\d+';
+    var NONNUM = '\\d*[a-zA-Z-][a-zA-Z0-9-]*';
+    var MAIN = '(' + NUM + ')\\.(' + NUM + ')\\.(' + NUM + ')';
+    var MAINL = '(' + NUML + ')\\.(' + NUML + ')\\.(' + NUML + ')';
+    var PREID = '(?:' + NONNUM + '|' + NUM + ')';
+    var PREIDL = '(?:' + NONNUM + '|' + NUML + ')';
+    var PRE = '(?:-(' + PREID + '(?:\\.' + PREID + ')*))';
+    var PREL = '(?:-?(' + PREIDL + '(?:\\.' + PREIDL + ')*))';
+    var BID = '[a-zA-Z0-9-]+';
+    var BUILD = '(?:\\+(' + BID + '(?:\\.' + BID + ')*))';
+    var FULLPLAIN = 'v?' + MAIN + PRE + '?' + BUILD + '?';
+    var LOOSEPLAIN = '[v=\\s]*' + MAINL + PREL + '?' + BUILD + '?';
+    var GTLT = '((?:<|>)?=?)';
+    var XID = NUM + '|x|X|\\*';
+    var XPLAIN = '[v=\\s]*(' + XID + ')(?:\\.(' + XID + ')(?:\\.(' + XID + ')(?:' + PRE + ')?' + BUILD + '?)?)?';
+    var TILDE1 = '(?:~>?)', CARET1 = '(?:\\^)';
+    function rx(p, g) { return new RegExp(bound(p), g ? 'g' : undefined); }
+    var R = {
+      full: rx('^' + FULLPLAIN + '$'),
+      xrange: rx('^' + GTLT + '\\s*' + XPLAIN + '$'),
+      tildeTrim: rx('(\\s*)' + TILDE1 + '\\s+', true),
+      tilde: rx('^' + TILDE1 + XPLAIN + '$'),
+      caretTrim: rx('(\\s*)' + CARET1 + '\\s+', true),
+      caret: rx('^' + CARET1 + XPLAIN + '$'),
+      comparator: rx('^' + GTLT + '\\s*(' + FULLPLAIN + ')$|^$'),
+      compTrim: rx('(\\s*)' + GTLT + '\\s*(' + LOOSEPLAIN + '|' + XPLAIN + ')', true),
+      hyphen: rx('^\\s*(' + XPLAIN + ')\\s+-\\s+(' + XPLAIN + ')\\s*$'),
+      star: rx('(<|>)?=?\\s*\\*'),
+      gte0: rx('^\\s*>=\\s*0\\.0\\.0\\s*$'),
+      build: rx(BUILD),
+      buildStrip: new RegExp(BUILD, 'g')
+    };
+    function Ver(text) {
+      if (typeof text !== 'string') throw new Error('Invalid version');
+      if (text.length > MAXLEN) throw new Error('version is longer than ' + MAXLEN + ' characters');
+      var m = text.trim().match(R.full);
+      if (!m) throw new Error('Invalid Version: ' + text);
+      this.major = +m[1]; this.minor = +m[2]; this.patch = +m[3];
+      if (this.major > MAXSAFE || this.minor > MAXSAFE || this.patch > MAXSAFE) throw new Error('Invalid version number');
+      this.pre = m[4] ? m[4].split('.').map(function (id) {
+        if (/^[0-9]+$/.test(id)) { var n = +id; if (n >= 0 && n < MAXSAFE) return n; }
+        return id;
+      }) : [];
+      this.build = m[5] ? m[5].split('.') : [];
+      this.version = this.major + '.' + this.minor + '.' + this.patch + (this.pre.length ? '-' + this.pre.join('.') : '');
+    }
+    function cmpId(a, b) {
+      if (typeof a === 'number' && typeof b === 'number') return a === b ? 0 : a < b ? -1 : 1;
+      var an = /^[0-9]+$/.test(a), bn = /^[0-9]+$/.test(b);
+      if (an && bn) { a = +a; b = +b; }
+      return a === b ? 0 : (an && !bn) ? -1 : (bn && !an) ? 1 : a < b ? -1 : 1;
+    }
+    function cmp(a, b) {
+      if (a.version === b.version) return 0;
+      var k = ['major', 'minor', 'patch'];
+      for (var i = 0; i < 3; i++) { if (a[k[i]] !== b[k[i]]) return a[k[i]] < b[k[i]] ? -1 : 1; }
+      if (a.pre.length && !b.pre.length) return -1;
+      if (!a.pre.length && b.pre.length) return 1;
+      if (!a.pre.length && !b.pre.length) return 0;
+      for (var j = 0; ; j++) {
+        var x = a.pre[j], y = b.pre[j];
+        if (x === undefined && y === undefined) return 0;
+        if (y === undefined) return 1;
+        if (x === undefined) return -1;
+        if (x === y) continue;
+        return cmpId(x, y);
+      }
+    }
+    var ANY = { any: true };
+    function Comp(text) {
+      text = text.trim().split(/\s+/).join(' ');
+      var m = text.match(R.comparator);
+      if (!m) throw new Error('Invalid comparator: ' + text);
+      this.op = m[1] !== undefined ? m[1] : '';
+      if (this.op === '=') this.op = '';
+      this.ver = m[2] ? new Ver(m[2]) : ANY;
+      this.value = this.ver === ANY ? '' : this.op + this.ver.version;
+    }
+    Comp.prototype.test = function (v) {
+      if (this.ver === ANY) return true;
+      var c = cmp(v, this.ver);
+      switch (this.op) {
+        case '': return c === 0;
+        case '>': return c > 0;
+        case '>=': return c >= 0;
+        case '<': return c < 0;
+        case '<=': return c <= 0;
+      }
+      return false;
+    };
+    function isX(id) { return !id || id.toLowerCase() === 'x' || id === '*'; }
+    function badXOrder(M, m, p) { return (isX(M) && !isX(m)) || (isX(m) && p && !isX(p)); }
+    function eachWord(s, f) { return s.trim().split(/\s+/).map(f).join(' '); }
+    function caret(c) {
+      return c.replace(R.caret, function (_, M, m, p, pr) {
+        if (isX(M)) return '';
+        if (isX(m)) return '>=' + M + '.0.0 <' + (+M + 1) + '.0.0-0';
+        if (isX(p)) return M === '0' ? '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0-0'
+                                     : '>=' + M + '.' + m + '.0 <' + (+M + 1) + '.0.0-0';
+        var lo = '>=' + M + '.' + m + '.' + p + (pr ? '-' + pr : '');
+        if (M === '0') return m === '0' ? lo + ' <' + M + '.' + m + '.' + (+p + 1) + '-0'
+                                        : lo + ' <' + M + '.' + (+m + 1) + '.0-0';
+        return lo + ' <' + (+M + 1) + '.0.0-0';
+      });
+    }
+    function tilde(c) {
+      return c.replace(R.tilde, function (_, M, m, p, pr) {
+        if (isX(M)) return '';
+        if (isX(m)) return '>=' + M + '.0.0 <' + (+M + 1) + '.0.0-0';
+        if (isX(p)) return '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0-0';
+        return '>=' + M + '.' + m + '.' + p + (pr ? '-' + pr : '') + ' <' + M + '.' + (+m + 1) + '.0-0';
+      });
+    }
+    function xrange(c) {
+      c = c.trim();
+      return c.replace(R.xrange, function (whole, gtlt, M, m, p) {
+        if (badXOrder(M, m, p)) return c;
+        var xM = isX(M), xm = xM || isX(m), xp = xm || isX(p), pr = '';
+        if (gtlt === '=' && xp) gtlt = '';
+        if (xM) return (gtlt === '>' || gtlt === '<') ? '<0.0.0-0' : '*';
+        if (gtlt && xp) {
+          if (xm) m = 0;
+          p = 0;
+          if (gtlt === '>') {
+            gtlt = '>=';
+            if (xm) { M = +M + 1; m = 0; p = 0; } else { m = +m + 1; p = 0; }
+          } else if (gtlt === '<=') {
+            gtlt = '<';
+            if (xm) M = +M + 1; else m = +m + 1;
+          }
+          if (gtlt === '<') pr = '-0';
+          return gtlt + M + '.' + m + '.' + p + pr;
+        }
+        if (xm) return '>=' + M + '.0.0 <' + (+M + 1) + '.0.0-0';
+        if (xp) return '>=' + M + '.' + m + '.0 <' + M + '.' + (+m + 1) + '.0-0';
+        return whole;
+      });
+    }
+    function hyphen(whole, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) {
+      var lo, hi;
+      if (isX(fM)) lo = '';
+      else if (isX(fm)) lo = '>=' + fM + '.0.0';
+      else if (isX(fp)) lo = '>=' + fM + '.' + fm + '.0';
+      else lo = '>=' + from;
+      if (isX(tM)) hi = '';
+      else if (isX(tm)) hi = '<' + (+tM + 1) + '.0.0-0';
+      else if (isX(tp)) hi = '<' + tM + '.' + (+tm + 1) + '.0-0';
+      else if (tpr) hi = '<=' + tM + '.' + tm + '.' + tp + '-' + tpr;
+      else hi = '<=' + to;
+      return (lo + ' ' + hi).trim();
+    }
+    function parseSet(part) {
+      part = part.replace(R.buildStrip, '');
+      part = part.replace(R.hyphen, hyphen);
+      part = part.replace(R.compTrim, '$1$2$3');
+      part = part.replace(R.tildeTrim, '$1~');
+      part = part.replace(R.caretTrim, '$1^');
+      var words = part.split(' ').map(function (c) {
+        c = c.replace(R.build, '');
+        c = eachWord(c, caret);
+        c = eachWord(c, tilde);
+        c = c.split(/\s+/).map(xrange).join(' ');
+        return c.trim().replace(R.star, '');
+      }).join(' ').split(/\s+/).map(function (c) { return c.trim().replace(R.gte0, ''); });
+      var seen = new Map();
+      var comps = words.map(function (w) { return new Comp(w); });
+      for (var i = 0; i < comps.length; i++) {
+        if (comps[i].value === '<0.0.0-0') return [comps[i]];
+        seen.set(comps[i].value, comps[i]);
+      }
+      if (seen.size > 1 && seen.has('')) seen.delete('');
+      return Array.from(seen.values());
+    }
+    function Range(text) {
+      this.raw = text.trim().replace(/\s+/g, ' ');
+      var sets = this.raw.split('||').map(function (p) { return parseSet(p.trim()); })
+        .filter(function (s) { return s.length; });
+      if (!sets.length) throw new Error('Invalid SemVer Range: ' + this.raw);
+      if (sets.length > 1) {
+        var first = sets[0];
+        sets = sets.filter(function (s) { return s[0].value !== '<0.0.0-0'; });
+        if (!sets.length) sets = [first];
+        else if (sets.length > 1) {
+          for (var i = 0; i < sets.length; i++) if (sets[i].length === 1 && sets[i][0].value === '') { sets = [sets[i]]; break; }
+        }
+      }
+      this.sets = sets;
+      this.range = sets.map(function (s) { return s.map(function (c) { return c.value; }).join(' '); }).join('||');
+    }
+    function testSet(set, v) {
+      for (var i = 0; i < set.length; i++) if (!set[i].test(v)) return false;
+      if (v.pre.length) {
+        for (var j = 0; j < set.length; j++) {
+          var a = set[j].ver;
+          if (a === ANY) continue;
+          if (a.pre.length && a.major === v.major && a.minor === v.minor && a.patch === v.patch) return true;
+        }
+        return false;
+      }
+      return true;
+    }
+    Range.prototype.test = function (v) {
+      for (var i = 0; i < this.sets.length; i++) if (testSet(this.sets[i], v)) return true;
+      return false;
+    };
+    return { Ver: Ver, Range: Range, cmp: cmp };
+  })();
+
+  // =============================================================== Cargo
+  // semver crate 1.0.28 (the crate Cargo uses for version requirements).
+  var CARGO = (function () {
+    var U64MAX = 18446744073709551615n;
+    var POS = { major: 'major version number', minor: 'minor version number', patch: 'patch version number', pre: 'pre-release identifier', build: 'build metadata' };
+    function err(msg) { var e = new Error(msg); e.cargo = true; return e; }
+    function q(ch) { return ch === '\0' ? "'\\0'" : "'" + (ch === "'" ? "\\'" : ch === '\\' ? '\\\\' : ch) + "'"; }
+    function num(s, pos) {
+      var i = 0, val = 0n;
+      while (i < s.length && s[i] >= '0' && s[i] <= '9') {
+        if (val === 0n && i > 0) throw err('invalid leading zero in ' + POS[pos]);
+        val = val * 10n + BigInt(s.charCodeAt(i) - 48);
+        if (val > U64MAX) throw err('value of ' + POS[pos] + ' exceeds u64::MAX');
+        i++;
+      }
+      if (i > 0) return [val, s.slice(i)];
+      if (s.length) throw err('unexpected character ' + q(firstChar(s)) + ' while parsing ' + POS[pos]);
+      throw err('unexpected end of input while parsing ' + POS[pos]);
+    }
+    function firstChar(s) { return Array.from(s)[0]; }
+    function dot(s, pos) {
+      if (s[0] === '.') return s.slice(1);
+      if (s.length) throw err('unexpected character ' + q(firstChar(s)) + ' after ' + POS[pos]);
+      throw err('unexpected end of input while parsing ' + POS[pos]);
+    }
+    function ident(s, pos) {
+      var acc = 0, seg = 0, nondigit = false;
+      for (;;) {
+        var c = s[acc + seg];
+        if (c !== undefined && (/[A-Za-z-]/.test(c))) { seg++; nondigit = true; }
+        else if (c !== undefined && c >= '0' && c <= '9') { seg++; }
+        else {
+          if (seg === 0) {
+            if (acc === 0 && c !== '.') return ['', s];
+            throw err('empty identifier segment in ' + POS[pos]);
+          }
+          if (pos === 'pre' && seg > 1 && !nondigit && s[acc] === '0') throw err('invalid leading zero in ' + POS[pos]);
+          acc += seg;
+          if (c === '.') { acc++; seg = 0; nondigit = false; }
+          else return [s.slice(0, acc), s.slice(acc)];
+        }
+      }
+    }
+    function Ver(text) {
+      if (text === '') throw err('empty string, expected a semver version');
+      var r = num(text, 'major'); this.major = r[0]; var s = dot(r[1], 'major');
+      r = num(s, 'minor'); this.minor = r[0]; s = dot(r[1], 'minor');
+      r = num(s, 'patch'); this.patch = r[0]; s = r[1];
+      var pos = 'patch';
+      this.pre = ''; this.build = '';
+      if (s[0] === '-') { pos = 'pre'; r = ident(s.slice(1), 'pre'); if (!r[0]) throw err('empty identifier segment in ' + POS.pre); this.pre = r[0]; s = r[1]; }
+      if (s[0] === '+') { pos = 'build'; r = ident(s.slice(1), 'build'); if (!r[0]) throw err('empty identifier segment in ' + POS.build); this.build = r[0]; s = r[1]; }
+      if (s.length) throw err('unexpected character ' + q(firstChar(s)) + ' after ' + POS[pos]);
+    }
+    Ver.prototype.toString = function () {
+      return this.major + '.' + this.minor + '.' + this.patch + (this.pre ? '-' + this.pre : '') + (this.build ? '+' + this.build : '');
+    };
+    function preCmp(a, b) {
+      if (a === b) return 0;
+      if (a === '') return 1;
+      if (b === '') return -1;
+      var A = a.split('.'), B = b.split('.');
+      for (var i = 0; i < A.length; i++) {
+        if (i >= B.length) return 1;
+        var x = A[i], y = B[i], xd = /^[0-9]+$/.test(x), yd = /^[0-9]+$/.test(y), o;
+        if (xd && yd) o = x.length !== y.length ? sign(x.length - y.length) : (x < y ? -1 : x > y ? 1 : 0);
+        else if (xd) return -1;
+        else if (yd) return 1;
+        else o = x < y ? -1 : x > y ? 1 : 0;
+        if (o) return o;
+      }
+      return A.length === B.length ? 0 : -1;
+    }
+    function wildcard(s) { return (s[0] === '*' || s[0] === 'x' || s[0] === 'X') ? [s[0], s.slice(1)] : null; }
+    function trimSp(s) { return s.replace(/^ +/, ''); }
+    function comparator(input) {
+      var op, text;
+      if (input[0] === '=') { op = 'Exact'; text = input.slice(1); }
+      else if (input[0] === '>') { if (input[1] === '=') { op = 'GreaterEq'; text = input.slice(2); } else { op = 'Greater'; text = input.slice(1); } }
+      else if (input[0] === '<') { if (input[1] === '=') { op = 'LessEq'; text = input.slice(2); } else { op = 'Less'; text = input.slice(1); } }
+      else if (input[0] === '~') { op = 'Tilde'; text = input.slice(1); }
+      else if (input[0] === '^') { op = 'Caret'; text = input.slice(1); }
+      else { op = 'Caret'; text = input; }
+      var defaultOp = input.length === text.length;
+      text = trimSp(text);
+      var pos = 'major', r = num(text, 'major'), major = r[0], minor = null, patch = null, pre = '', hasW = false, w;
+      text = r[1];
+      if (text[0] === '.') {
+        text = text.slice(1); pos = 'minor';
+        if ((w = wildcard(text))) { hasW = true; if (defaultOp) op = 'Wildcard'; text = w[1]; }
+        else { r = num(text, 'minor'); minor = r[0]; text = r[1]; }
+      }
+      if (text[0] === '.') {
+        text = text.slice(1); pos = 'patch';
+        if ((w = wildcard(text))) { if (defaultOp) op = 'Wildcard'; text = w[1]; }
+        else if (hasW) throw err('unexpected character after wildcard in version req');
+        else { r = num(text, 'patch'); patch = r[0]; text = r[1]; }
+      }
+      if (patch !== null && text[0] === '-') { pos = 'pre'; r = ident(text.slice(1), 'pre'); if (!r[0]) throw err('empty identifier segment in ' + POS.pre); pre = r[0]; text = r[1]; }
+      if (patch !== null && text[0] === '+') { pos = 'build'; r = ident(text.slice(1), 'build'); if (!r[0]) throw err('empty identifier segment in ' + POS.build); text = r[1]; }
+      return [{ op: op, major: major, minor: minor, patch: patch, pre: pre }, pos, trimSp(text)];
+    }
+    function Req(text) {
+      text = trimSp(text);
+      var w = wildcard(text);
+      if (w) {
+        var rest = trimSp(w[1]);
+        if (!rest) { this.comps = []; return; }
+        if (rest[0] === ',') throw err('wildcard req (' + w[0] + ') must be the only comparator in the version req');
+        throw err('unexpected character after wildcard in version req');
+      }
+      var out = [], depth = 0;
+      for (;;) {
+        var res;
+        try { res = comparator(text); }
+        catch (e) {
+          var ww = wildcard(text);
+          if (ww) { var rr = trimSp(ww[1]); if (!rr || rr[0] === ',') throw err('wildcard req (' + ww[0] + ') must be the only comparator in the version req'); }
+          throw e;
+        }
+        out.push(res[0]);
+        var t = res[2];
+        if (!t) break;
+        if (t[0] !== ',') throw err('expected comma after ' + POS[res[1]] + ', found ' + q(firstChar(t)));
+        text = trimSp(t.slice(1));
+        if (depth + 1 === 32) throw err('excessive number of version comparators');
+        depth++;
+      }
+      this.comps = out;
+    }
+    var OPSTR = { Exact: '=', Greater: '>', GreaterEq: '>=', Less: '<', LessEq: '<=', Tilde: '~', Caret: '^', Wildcard: '' };
+    function compStr(c) {
+      var s = OPSTR[c.op] + c.major;
+      if (c.minor !== null) {
+        s += '.' + c.minor;
+        if (c.patch !== null) { s += '.' + c.patch; if (c.pre) s += '-' + c.pre; }
+        else if (c.op === 'Wildcard') s += '.*';
+      } else if (c.op === 'Wildcard') s += '.*';
+      return s;
+    }
+    Req.prototype.toString = function () { return this.comps.length ? this.comps.map(compStr).join(', ') : '*'; };
+    function exact(c, v) {
+      if (v.major !== c.major) return false;
+      if (c.minor !== null && v.minor !== c.minor) return false;
+      if (c.patch !== null && v.patch !== c.patch) return false;
+      return v.pre === c.pre;
+    }
+    function greater(c, v) {
+      if (v.major !== c.major) return v.major > c.major;
+      if (c.minor === null) return false;
+      if (v.minor !== c.minor) return v.minor > c.minor;
+      if (c.patch === null) return false;
+      if (v.patch !== c.patch) return v.patch > c.patch;
+      return preCmp(v.pre, c.pre) > 0;
+    }
+    function less(c, v) {
+      if (v.major !== c.major) return v.major < c.major;
+      if (c.minor === null) return false;
+      if (v.minor !== c.minor) return v.minor < c.minor;
+      if (c.patch === null) return false;
+      if (v.patch !== c.patch) return v.patch < c.patch;
+      return preCmp(v.pre, c.pre) < 0;
+    }
+    function tildeM(c, v) {
+      if (v.major !== c.major) return false;
+      if (c.minor !== null && v.minor !== c.minor) return false;
+      if (c.patch !== null && v.patch !== c.patch) return v.patch > c.patch;
+      return preCmp(v.pre, c.pre) >= 0;
+    }
+    function caretM(c, v) {
+      if (v.major !== c.major) return false;
+      if (c.minor === null) return true;
+      if (c.patch === null) return c.major > 0n ? v.minor >= c.minor : v.minor === c.minor;
+      if (c.major > 0n) {
+        if (v.minor !== c.minor) return v.minor > c.minor;
+        if (v.patch !== c.patch) return v.patch > c.patch;
+      } else if (c.minor > 0n) {
+        if (v.minor !== c.minor) return false;
+        if (v.patch !== c.patch) return v.patch > c.patch;
+      } else if (v.minor !== c.minor || v.patch !== c.patch) return false;
+      return preCmp(v.pre, c.pre) >= 0;
+    }
+    function impl(c, v) {
+      switch (c.op) {
+        case 'Exact': case 'Wildcard': return exact(c, v);
+        case 'Greater': return greater(c, v);
+        case 'GreaterEq': return exact(c, v) || greater(c, v);
+        case 'Less': return less(c, v);
+        case 'LessEq': return exact(c, v) || less(c, v);
+        case 'Tilde': return tildeM(c, v);
+        case 'Caret': return caretM(c, v);
+      }
+      return false;
+    }
+    Req.prototype.matches = function (v) {
+      for (var i = 0; i < this.comps.length; i++) if (!impl(this.comps[i], v)) return false;
+      if (!v.pre) return true;
+      for (var j = 0; j < this.comps.length; j++) {
+        var c = this.comps[j];
+        if (c.major === v.major && c.minor === v.minor && c.patch === v.patch && c.pre) return true;
+      }
+      return false;
+    };
+    // Plain comparator reading of one comparator, derived from the eval rules above.
+    function plain(c) {
+      var M = c.major, m = c.minor, p = c.patch, pre = c.pre ? '-' + c.pre : '';
+      var full = p !== null ? M + '.' + m + '.' + p + pre : null;
+      function v3(a, b, d) { return a + '.' + b + '.' + d; }
+      switch (c.op) {
+        case 'Exact': case 'Wildcard':
+          if (m === null) return [['>=', v3(M, 0, 0)], ['<', v3(M + 1n, 0, 0)]];
+          if (p === null) return [['>=', v3(M, m, 0)], ['<', v3(M, m + 1n, 0)]];
+          return [['=', full]];
+        case 'Greater':
+          if (m === null) return [['>=', v3(M + 1n, 0, 0)]];
+          if (p === null) return [['>=', v3(M, m + 1n, 0)]];
+          return [['>', full]];
+        case 'GreaterEq':
+          return [['>=', p !== null ? full : v3(M, m === null ? 0 : m, 0)]];
+        case 'Less':
+          return [['<', p !== null ? full : v3(M, m === null ? 0 : m, 0)]];
+        case 'LessEq':
+          if (m === null) return [['<', v3(M + 1n, 0, 0)]];
+          if (p === null) return [['<', v3(M, m + 1n, 0)]];
+          return [['<=', full]];
+        case 'Tilde':
+          if (m === null) return [['>=', v3(M, 0, 0)], ['<', v3(M + 1n, 0, 0)]];
+          return [['>=', p === null ? v3(M, m, 0) : full], ['<', v3(M, m + 1n, 0)]];
+        case 'Caret':
+          if (m === null) return [['>=', v3(M, 0, 0)], ['<', v3(M + 1n, 0, 0)]];
+          var lo = p === null ? v3(M, m, 0) : full;
+          if (M > 0n) return [['>=', lo], ['<', v3(M + 1n, 0, 0)]];
+          if (p === null || m > 0n) return [['>=', lo], ['<', v3(0, m + 1n, 0)]];
+          return [['>=', lo], ['<', v3(0, 0, p + 1n)]];
+      }
+      return [];
+    }
+    return { Ver: Ver, Req: Req, plain: plain, preCmp: preCmp };
+  })();
+
+  // =============================================================== PHP version_compare
+  // php-src ext/standard/versioning.c
+  var PHPV = (function () {
+    function isdigit(c) { return c >= '0' && c <= '9'; }
+    function isalnum(c) { return /^[A-Za-z0-9]$/.test(c); }
+    function canon(v) {
+      if (!v.length) return '';
+      var out = [v[0]], lp = v[0];
+      for (var i = 1; i < v.length; i++) {
+        var p = v[i], lq = out[out.length - 1];
+        var isd = function (x) { return isdigit(x) && x !== '.'; };
+        var isnd = function (x) { return !isdigit(x) && x !== '.'; };
+        if (p === '-' || p === '_' || p === '+') { if (lq !== '.') out.push('.'); }
+        else if ((isnd(lp) && isd(p)) || (isd(lp) && isnd(p))) { if (lq !== '.') out.push('.'); out.push(p); }
+        else if (!isalnum(p)) { if (lq !== '.') out.push('.'); }
+        else out.push(p);
+        lp = p;
+      }
+      if (out[out.length - 1] === '.') out.pop();
+      return out.join('');
+    }
+    var FORMS = [['dev', 0], ['alpha', 1], ['a', 1], ['beta', 2], ['b', 2], ['RC', 3], ['rc', 3], ['#', 4], ['pl', 5], ['p', 5]];
+    function form(s) { for (var i = 0; i < FORMS.length; i++) if (s.slice(0, FORMS[i][0].length) === FORMS[i][0]) return FORMS[i][1]; return -1; }
+    function strtol(s) { var m = /^[0-9]+/.exec(s); return m ? Number(m[0]) : 0; }
+    function compare(a, b) {
+      if (!a.length || !b.length) { if (!a.length && !b.length) return 0; return a.length ? 1 : -1; }
+      var s1 = a[0] === '#' ? a : canon(a), s2 = b[0] === '#' ? b : canon(b);
+      var p1 = 0, p2 = 0, n1 = 0, n2 = 0, c = 0, seg1, seg2;
+      while (p1 < s1.length && p2 < s2.length && n1 !== null && n2 !== null) {
+        var d1 = s1.indexOf('.', p1), d2 = s2.indexOf('.', p2);
+        n1 = d1 === -1 ? null : d1; n2 = d2 === -1 ? null : d2;
+        seg1 = s1.slice(p1, n1 === null ? s1.length : n1);
+        seg2 = s2.slice(p2, n2 === null ? s2.length : n2);
+        var c1 = seg1[0] || '', c2 = seg2[0] || '';
+        if (isdigit(c1) && isdigit(c2)) c = sign(strtol(seg1) - strtol(seg2));
+        else if (!isdigit(c1) && !isdigit(c2)) c = sign(form(seg1) - form(seg2));
+        else if (isdigit(c1)) c = sign(form('#N#') - form(seg2));
+        else c = sign(form(seg1) - form('#N#'));
+        if (c !== 0) break;
+        if (n1 !== null) p1 = n1 + 1;
+        if (n2 !== null) p2 = n2 + 1;
+      }
+      if (c === 0) {
+        if (n1 !== null) c = isdigit(s1[p1] || '') ? 1 : compare(s1.slice(p1), '#N#');
+        else if (n2 !== null) c = isdigit(s2[p2] || '') ? -1 : compare('#N#', s2.slice(p2));
+      }
+      return c;
+    }
+    function vc(a, b, op) {
+      var c = compare(a, b);
+      switch (op) {
+        case '<': return c === -1;
+        case '<=': return c !== 1;
+        case '>': return c === 1;
+        case '>=': return c !== -1;
+        case '==': case '=': return c === 0;
+        case '!=': case '<>': return c !== 0;
+      }
+      throw new Error('bad operator');
+    }
+    return { compare: compare, vc: vc, canon: canon };
+  })();
+
+  // =============================================================== Composer
+  // composer/semver 3.5.0 VersionParser + Constraint, with PHP version_compare.
+  var COMPOSER = (function () {
+    var nA = 0;
+    // PCRE possessive quantifiers and atomic groups have no JS syntax. A lookahead that
+    // captures, followed by a backreference to it, gives the same no-backtrack behaviour.
+    function A(p) { var n = 'a' + (nA++); return '(?=(?<' + n + '>' + p + '))\\k<' + n + '>'; }
+    function MOD(s) {
+      return '[._-]?(?:(?<stab' + s + '>stable|beta|b|RC|alpha|a|patch|pl|p)(?<num' + s + '>' + A('(?:[.-]?\\d+)*') + ')?)?(?<dev' + s + '>[.-]?dev)?';
+    }
+    var STAB = 'stable|RC|beta|alpha|dev';
+    var R = {
+      alias: /^([^,\s]+) +as +([^,\s]+)$/,
+      flag: new RegExp('@(?:' + STAB + ')$', 'i'),
+      build: new RegExp('^(' + A('[^,\\s+]+') + ')\\+' + A('[^\\s]+') + '$'),
+      classic: new RegExp('^v?(?<n1>' + A('\\d{1,5}') + ')(?<n2>\\.' + A('\\d+') + ')?(?<n3>\\.' + A('\\d+') + ')?(?<n4>\\.' + A('\\d+') + ')?' + MOD('') + '$', 'i'),
+      date: new RegExp('^v?(?<d>\\d{4}(?:[.:-]?\\d{2}){1,6}(?:[.:-]?\\d{1,3}){0,2})' + MOD('') + '$', 'i'),
+      devBranch: /^(.*?)[.-]?dev$/i,
+      branch: new RegExp('^v?(?<b1>' + A('\\d+') + ')(?<b2>\\.(?:' + A('\\d+') + '|[xX*]))?(?<b3>\\.(?:' + A('\\d+') + '|[xX*]))?(?<b4>\\.(?:' + A('\\d+') + '|[xX*]))?$', 'i'),
+      orSplit: /\s*\|\|?\s*/,
+      andSplit: /(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)/,
+      cflag: new RegExp('^([^,\\s]*?)@(' + STAB + ')$', 'i'),
+      ref: /^(dev-[^,\s@]+?|[^,\s@]+?\.x-dev)#.+$/i,
+      star: /^(v)?[xX*](\.[xX*])*$/i,
+      stabTail: new RegExp(MOD('') + '(?:\\+.*)?$', 'i'),
+      basic: /^(<>|!=|>=?|<=?|==?)?\s*([^\n]*)/,
+      modTail: new RegExp('-' + MOD('') + '$', 'i')
+    };
+    function VER(s) {
+      return 'v?(?<v1' + s + '>' + A('\\d+') + ')(?:\\.(?<v2' + s + '>' + A('\\d+') + '))?(?:\\.(?<v3' + s + '>' + A('\\d+') + '))?(?:\\.(?<v4' + s + '>' + A('\\d+') + '))?(?:' + MOD(s) + '|\\.(?<xd' + s + '>[xX*][.-]?dev))(?:\\+[^\\s]+)?';
+    }
+    R.tilde = new RegExp('^~>?' + VER('') + '$', 'i');
+    R.caret = new RegExp('^\\^' + VER('') + '$', 'i');
+    R.xr = new RegExp('^v?(?<x1>' + A('\\d+') + ')(?:\\.(?<x2>' + A('\\d+') + '))?(?:\\.(?<x3>' + A('\\d+') + '))?' + A('(?:\\.[xX*])+') + '$');
+    R.hyph = new RegExp('^(?<from>' + VER('F') + ') +- +(?<to>' + VER('T') + ')$', 'i');
+    function phpTrim(s) { return s.replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, ''); }
+    function g(m, k) { var v = m.groups[k]; return v === undefined ? '' : v; }
+    function expand(s) { s = s.toLowerCase(); return s === 'a' ? 'alpha' : s === 'b' ? 'beta' : (s === 'p' || s === 'pl') ? 'patch' : s === 'rc' ? 'RC' : s; }
+    function normalizeBranch(name) {
+      name = phpTrim(name);
+      var m = R.branch.exec(name);
+      if (m) {
+        var v = '';
+        ['b1', 'b2', 'b3', 'b4'].forEach(function (k) { var x = m.groups[k]; v += x !== undefined ? x.replace(/\*/g, 'x').replace(/X/g, 'x') : '.x'; });
+        return v.replace(/x/g, '9999999') + '-dev';
+      }
+      return 'dev-' + name;
+    }
+    function normalize(version) {
+      version = phpTrim(String(version));
+      var orig = version, m;
+      if ((m = R.alias.exec(version))) version = m[1];
+      if ((m = R.flag.exec(version))) version = version.slice(0, version.length - m[0].length);
+      if (version === 'master' || version === 'trunk' || version === 'default') version = 'dev-' + version;
+      if (version.slice(0, 4).toLowerCase() === 'dev-') return 'dev-' + version.slice(4);
+      if ((m = R.build.exec(version))) version = m[1];
+      var out = null, stab, nums, dev;
+      if ((m = R.classic.exec(version))) {
+        out = g(m, 'n1') + (g(m, 'n2') || '.0') + (g(m, 'n3') || '.0') + (g(m, 'n4') || '.0');
+      } else if ((m = R.date.exec(version))) {
+        out = g(m, 'd').replace(/\D/g, '.');
+      }
+      if (out !== null) {
+        stab = g(m, 'stab'); nums = g(m, 'num'); dev = g(m, 'dev');
+        if (stab) {
+          if (stab === 'stable') return out;
+          out += '-' + expand(stab) + (nums !== '' ? nums.replace(/^[.-]+/, '') : '');
+        }
+        if (dev) out += '-dev';
+        return out;
+      }
+      if ((m = R.devBranch.exec(version))) {
+        try { var nb = normalizeBranch(m[1]); if (nb.indexOf('dev-') === -1) return nb; } catch (e) { /* fall through */ }
+      }
+      throw new Error('Invalid version string "' + orig + '"');
+    }
+    function parseStability(v) {
+      v = String(v).replace(/#.+$/, '');
+      if (v.indexOf('dev-') === 0 || v.slice(-4) === '-dev') return 'dev';
+      var m = R.stabTail.exec(v.toLowerCase());
+      if (m && g(m, 'dev')) return 'dev';
+      var s = m ? g(m, 'stab') : '';
+      if (s) {
+        if (s === 'beta' || s === 'b') return 'beta';
+        if (s === 'alpha' || s === 'a') return 'alpha';
+        if (s === 'rc') return 'RC';
+      }
+      return 'stable';
+    }
+    function C(op, version) { this.op = op === '=' ? '==' : op === '<>' ? '!=' : op; this.version = version; }
+    C.prototype.toString = function () { return this.op + ' ' + this.version; };
+    function manip(arr, position, inc) {
+      var a = arr.slice();
+      for (var i = 4; i > 0; i--) {
+        if (i > position) a[i] = '0';
+        else if (i === position && inc) a[i] = String(Number(a[i] || 0) + inc);
+      }
+      return [1, 2, 3, 4].map(function (i) { return a[i] === undefined ? '' : a[i]; }).join('.');
+    }
+    function nonEmpty(x) { return x !== undefined && x !== '' && x !== '0'; } // PHP !empty() on a string
+    function parseOne(c) {
+      var m, mod = null;
+      if ((m = R.alias.exec(c))) c = m[1];
+      if ((m = R.cflag.exec(c))) { c = m[1] !== '' ? m[1] : '*'; if (m[2] !== 'stable') mod = m[2]; }
+      if ((m = R.ref.exec(c))) c = m[1];
+      if ((m = R.star.exec(c))) {
+        if (nonEmpty(m[1]) || nonEmpty(m[2])) return { list: [new C('>=', '0.0.0.0-dev')], flag: mod };
+        return { list: [], all: true, flag: mod };
+      }
+      if ((m = R.tilde.exec(c))) {
+        if (c.indexOf('~>') === 0) throw new Error('Could not parse version constraint ' + c + ': Invalid operator "~>", you probably meant to use the "~" operator');
+        var pos = g(m, 'v4') !== '' ? 4 : g(m, 'v3') !== '' ? 3 : g(m, 'v2') !== '' ? 2 : 1;
+        if (nonEmpty(g(m, 'xd'))) pos++;
+        var suf = (!nonEmpty(g(m, 'stab')) && !nonEmpty(g(m, 'dev')) && !nonEmpty(g(m, 'xd'))) ? '-dev' : '';
+        var low = normalize((c + suf).slice(1));
+        var arr = ['', g(m, 'v1'), g(m, 'v2'), g(m, 'v3'), g(m, 'v4')];
+        return { list: [new C('>=', low), new C('<', manip(arr, Math.max(1, pos - 1), 1) + '-dev')], flag: mod };
+      }
+      if ((m = R.caret.exec(c))) {
+        var v1 = g(m, 'v1'), v2 = g(m, 'v2'), v3 = g(m, 'v3');
+        var p = ('0' !== v1 || '' === v2) ? 1 : ('0' !== v2 || '' === v3) ? 2 : 3;
+        var s2 = (!nonEmpty(g(m, 'stab')) && !nonEmpty(g(m, 'dev')) && !nonEmpty(g(m, 'xd'))) ? '-dev' : '';
+        var lo = normalize((c + s2).slice(1));
+        var ar = ['', v1, v2, v3, g(m, 'v4')];
+        return { list: [new C('>=', lo), new C('<', manip(ar, p, 1) + '-dev')], flag: mod };
+      }
+      if ((m = R.xr.exec(c))) {
+        var xp = g(m, 'x3') !== '' ? 3 : g(m, 'x2') !== '' ? 2 : 1;
+        var xa = ['', g(m, 'x1'), m.groups.x2, m.groups.x3, undefined];
+        var lowV = manip(xa, xp, 0) + '-dev', highV = manip(xa, xp, 1) + '-dev';
+        if (lowV === '0.0.0.0-dev') return { list: [new C('<', highV)], flag: mod };
+        return { list: [new C('>=', lowV), new C('<', highV)], flag: mod };
+      }
+      if ((m = R.hyph.exec(c))) {
+        var lowSuf = (!nonEmpty(g(m, 'stabF')) && !nonEmpty(g(m, 'devF')) && !nonEmpty(g(m, 'xdF'))) ? '-dev' : '';
+        var lower = new C('>=', normalize(m.groups.from) + lowSuf), upper;
+        var emp = function (x) { return (x === '0') ? false : !nonEmpty(x); };
+        if ((!emp(g(m, 'v2T')) && !emp(g(m, 'v3T'))) || nonEmpty(g(m, 'stabT')) || nonEmpty(g(m, 'devT')) || nonEmpty(g(m, 'xdT'))) {
+          upper = new C('<=', normalize(m.groups.to));
+        } else {
+          normalize(m.groups.to);
+          var hm = ['', g(m, 'v1T'), g(m, 'v2T'), g(m, 'v3T'), g(m, 'v4T')];
+          upper = new C('<', manip(hm, emp(g(m, 'v2T')) ? 1 : 2, 1) + '-dev');
+        }
+        return { list: [lower, upper], flag: mod };
+      }
+      m = R.basic.exec(c);
+      var caught;
+      try {
+        var version;
+        try { version = normalize(m[2]); }
+        catch (e1) {
+          if (m[2].slice(-4) === '-dev' && /^[0-9a-zA-Z\-./]+$/.test(m[2])) version = normalize('dev-' + m[2].slice(0, -4));
+          else throw e1;
+        }
+        var op = m[1] || '=';
+        if (op !== '==' && op !== '=' && mod && parseStability(version) === 'stable') version += '-' + mod;
+        else if (op === '<' || op === '>=') {
+          if (!R.modTail.test(m[2]) && m[2].indexOf('dev-') !== 0) version += '-dev';
+        }
+        return { list: [new C(m[1] || '=', version)], flag: mod };
+      } catch (e) { caught = e; }
+      throw new Error('Could not parse version constraint ' + c + (caught ? ': ' + caught.message : ''));
+    }
+    // Constraint tree: {and:[...]} | {or:[...]} | C | {all:true}
+    function parseConstraints(text) {
+      var flags = [];
+      var ors = phpTrim(String(text)).split(R.orSplit);
+      var groups = ors.map(function (orc) {
+        var ands = orc.split(R.andSplit), objs = [];
+        ands.forEach(function (a) {
+          var r = parseOne(a);
+          if (r.flag) flags.push(r.flag);
+          if (r.all) objs.push({ all: true }); else objs = objs.concat(r.list);
+        });
+        return objs.length === 1 ? objs[0] : { and: objs };
+      });
+      var tree;
+      if (groups.length === 1) tree = groups[0];
+      else {
+        // MultiConstraint::create merges contiguous [>= a < b] || [>= b < c] groups.
+        var merged = [], left = groups[0], did = false;
+        for (var i = 1; i < groups.length; i++) {
+          var right = groups[i];
+          if (left.and && right.and && left.and.length === 2 && right.and.length === 2 &&
+              left.and[0].op === '>=' && left.and[1].op === '<' && right.and[0].op === '>=' && right.and[1].op === '<' &&
+              left.and[1].version === right.and[0].version) {
+            did = true; left = { and: [left.and[0], right.and[1]] };
+          } else { merged.push(left); left = right; }
+        }
+        if (did) { merged.push(left); tree = merged.length === 1 ? merged[0] : { or: merged }; }
+        else tree = { or: groups };
+      }
+      return { tree: tree, flags: flags };
+    }
+    // composer/composer RootPackageLoader::extractStabilityFlags for one ROOT requirement,
+    // with the default minimum-stability (stable) and no prior flags. Returns
+    // { explicit: name|null, inferred: name|null }, each the least stable one found.
+    var STAB_ORDER = { stable: 0, RC: 5, beta: 10, alpha: 15, dev: 20 };
+    var STAB_NAME = { stable: 'stable', rc: 'RC', beta: 'beta', alpha: 'alpha', dev: 'dev' };
+    function rootFlags(text) {
+      var cons = [], explicit = null, inferred = null;
+      phpTrim(String(text)).split(R.orSplit).forEach(function (o) { o.split(R.andSplit).forEach(function (a) { cons.push(a); }); });
+      var ex = new RegExp('^[^@]*?@(' + STAB + ')$', 'i');
+      cons.forEach(function (c) {
+        var m = ex.exec(c);
+        if (m) { var s = STAB_NAME[m[1].toLowerCase()]; if (!explicit || STAB_ORDER[s] > STAB_ORDER[explicit]) explicit = s; }
+      });
+      if (explicit) return { explicit: explicit, inferred: null };
+      cons.forEach(function (c) {
+        var rv = c.replace(/^([^,\s@]+) as .+$/, '$1'), s;
+        if (/^[^,\s@]+$/.test(rv) && (s = parseStability(rv)) !== 'stable') {
+          if (!inferred || STAB_ORDER[s] > STAB_ORDER[inferred]) inferred = s;
+        }
+      });
+      return { explicit: null, inferred: inferred };
+    }
+    function str(t) {
+      if (t.all) return '*';
+      if (t.and) return '[' + t.and.map(str).join(' ') + ']';
+      if (t.or) return '[' + t.or.map(str).join(' || ') + ']';
+      return t.toString();
+    }
+    function cmpOne(c, v) {
+      var aB = v.indexOf('dev-') === 0, bB = c.version.indexOf('dev-') === 0;
+      if (c.op === '!=') { if (aB || bB) return v !== c.version; return PHPV.vc(v, c.version, '!='); }
+      if (c.op === '==') { if (aB && bB) return v === c.version; if (aB || bB) return false; return PHPV.vc(c.version, v, '=='); }
+      if (aB && bB) return false;
+      if (aB || bB) return false;
+      return PHPV.vc(v, c.version, c.op);
+    }
+    function match(t, v) {
+      if (t.all) return true;
+      if (t.and) return t.and.every(function (x) { return match(x, v); });
+      if (t.or) return t.or.some(function (x) { return match(x, v); });
+      return cmpOne(t, v);
+    }
+    return { normalize: normalize, parseConstraints: parseConstraints, str: str, match: match, parseStability: parseStability, rootFlags: rootFlags };
+  })();
+
+  // =============================================================== PEP 440
+  // As implemented by pypa/packaging 26.3 (Version, Specifier, SpecifierSet).
+  var PEP = (function () {
+    var VRE = /^\s*v?(?:(?:([0-9]+)!)?([0-9]+(?:\.[0-9]+)*)([-_.]?(alpha|a|beta|b|preview|pre|c|rc)[-_.]?([0-9]+)?)?((?:-([0-9]+))|(?:[-_.]?(post|rev|r)[-_.]?([0-9]+)?))?([-_.]?(dev)[-_.]?([0-9]+)?)?)(?:\+([a-z0-9]+(?:[-_.][a-z0-9]+)*))?\s*$/i;
+    var LET = { alpha: 'a', beta: 'b', c: 'rc', pre: 'rc', preview: 'rc', rev: 'post', r: 'post' };
+    function Ver(text) {
+      var m = VRE.exec(text);
+      if (!m) throw new Error('Invalid version: ' + JSON.stringify(text));
+      this.epoch = m[1] ? BigInt(m[1]) : 0n;
+      this.release = m[2].split('.').map(function (x) { return BigInt(x); });
+      this.pre = null; this.post = null; this.dev = null; this.local = null;
+      if (m[4]) { var l = m[4].toLowerCase(); this.pre = [LET[l] || l, m[5] ? BigInt(m[5]) : 0n]; }
+      if (m[7]) this.post = BigInt(m[7]);
+      else if (m[8]) this.post = m[9] ? BigInt(m[9]) : 0n;
+      if (m[11]) this.dev = m[12] ? BigInt(m[12]) : 0n;
+      if (m[13]) this.local = m[13].split(/[._-]/).map(function (p) { return /^[0-9]+$/.test(p) ? BigInt(p) : p.toLowerCase(); });
+    }
+    Ver.prototype.isPre = function () { return this.pre !== null || this.dev !== null; };
+    Ver.prototype.isPost = function () { return this.post !== null; };
+    Ver.prototype.toString = function () {
+      var s = (this.epoch ? this.epoch + '!' : '') + this.release.join('.');
+      if (this.pre) s += this.pre[0] + this.pre[1];
+      if (this.post !== null) s += '.post' + this.post;
+      if (this.dev !== null) s += '.dev' + this.dev;
+      if (this.local) s += '+' + this.local.join('.');
+      return s;
+    };
+    Ver.prototype.pub = function () { var c = Object.create(Ver.prototype); Object.assign(c, this); c.local = null; return c; };
+    function key(v) {
+      var r = v.release.slice(); while (r.length && r[r.length - 1] === 0n) r.pop();
+      var preRank, preN;
+      if (v.pre === null && v.post === null && v.dev !== null) { preRank = -1; preN = 0n; }
+      else if (v.pre === null) { preRank = 3; preN = 0n; }
+      else { preRank = { a: 0, b: 1, rc: 2 }[v.pre[0]]; preN = v.pre[1]; }
+      return { e: v.epoch, r: r, s: [BigInt(preRank), preN, v.post === null ? 0n : 1n, v.post === null ? 0n : v.post, v.dev === null ? 1n : 0n, v.dev === null ? 0n : v.dev], l: v.local };
+    }
+    function cmpArr(a, b, f) {
+      for (var i = 0; i < Math.min(a.length, b.length); i++) { var c = f(a[i], b[i]); if (c) return c; }
+      return sign(a.length - b.length);
+    }
+    function cmp(a, b) {
+      var x = key(a), y = key(b), c;
+      if ((c = bigCmp(x.e, y.e))) return c;
+      if ((c = cmpArr(x.r, y.r, bigCmp))) return c;
+      if ((c = cmpArr(x.s, y.s, bigCmp))) return c;
+      if (x.l === null && y.l === null) return 0;
+      if (x.l === null) return -1;
+      if (y.l === null) return 1;
+      return cmpArr(x.l, y.l, function (p, q) {
+        var pi = typeof p === 'bigint', qi = typeof q === 'bigint';
+        if (pi && qi) return bigCmp(p, q);
+        if (pi) return 1;
+        if (qi) return -1;
+        return p < q ? -1 : p > q ? 1 : 0;
+      });
+    }
+    function tryVer(s) { try { return new Ver(s); } catch (e) { return null; } }
+    function canonStr(s) { var v = tryVer(s); return v ? v.toString() : s; }
+    function vsplit(s) {
+      var i = s.lastIndexOf('!'), ep = i === -1 ? '' : s.slice(0, i), rest = i === -1 ? s : s.slice(i + 1);
+      var out = [ep || '0'];
+      rest.split('.').forEach(function (it) {
+        var m = /^([0-9]+)((?:a|b|c|rc)[0-9]+)$/.exec(it);
+        if (m) out.push(m[1], m[2]); else out.push(it);
+      });
+      return out;
+    }
+    function numLen(a) { var n = 0; for (var i = 0; i < a.length; i++) { if (!/^[0-9]+$/.test(a[i])) break; n++; } return n; }
+    var SPEC = new RegExp('^\\s*(?:' +
+      '(?:===\\s*[^\\s;)]*)' +
+      '|(?:(?:==|!=)\\s*v?(?:[0-9]+!)?[0-9]+(?:\\.[0-9]+)*(?:\\.\\*|(?:[-_.]?(alpha|beta|preview|pre|a|b|c|rc)[-_.]?[0-9]*)?(?:(?:-[0-9]+)|(?:[-_.]?(post|rev|r)[-_.]?[0-9]*))?(?:[-_.]?dev[-_.]?[0-9]*)?(?:\\+[a-z0-9]+(?:[-_.][a-z0-9]+)*)?)?)' +
+      '|(?:~=\\s*v?(?:[0-9]+!)?[0-9]+(?:\\.[0-9]+)+(?:[-_.]?(alpha|beta|preview|pre|a|b|c|rc)[-_.]?[0-9]*)?(?:(?:-[0-9]+)|(?:[-_.]?(post|rev|r)[-_.]?[0-9]*))?(?:[-_.]?dev[-_.]?[0-9]*)?)' +
+      '|(?:(?:<=|>=|<|>)\\s*v?(?:[0-9]+!)?[0-9]+(?:\\.[0-9]+)*(?:[-_.]?(alpha|beta|preview|pre|a|b|c|rc)[-_.]?[0-9]*)?(?:(?:-[0-9]+)|(?:[-_.]?(post|rev|r)[-_.]?[0-9]*))?(?:[-_.]?dev[-_.]?[0-9]*)?)' +
+      ')\\s*$', 'i');
+    function Spec(text) {
+      if (!SPEC.test(text)) throw new Error('Invalid specifier: ' + pyRepr(text));
+      var s = text.trim(), op, v;
+      if (s.indexOf('===') === 0) { op = '==='; v = s.slice(3).trim(); }
+      else if (/^(~=|==|!=|<=|>=)/.test(s)) { op = s.slice(0, 2); v = s.slice(2).trim(); }
+      else { op = s.slice(0, 1); v = s.slice(1).trim(); }
+      this.op = op; this.v = v;
+    }
+    Spec.prototype.toString = function () { return this.op + this.v; };
+    Spec.prototype.prereleases = function () {
+      if (this.op === '!=') return false;
+      if (this.op === '==' && /\.\*$/.test(this.v)) return false;
+      var pv = tryVer(this.v);
+      if (!pv) return null;
+      return pv.isPre();
+    };
+    function eqWild(p, spec) {
+      var ss = vsplit(canonStr(spec.slice(0, -2))), n = numLen(ss);
+      var sp = vsplit(p.pub().toString()), have = numLen(sp);
+      if (have < n) sp = sp.slice(0, have).concat(new Array(n - have).fill('0'), sp.slice(have));
+      sp = sp.slice(0, ss.length);
+      return sp.length === ss.length && sp.every(function (x, i) { return x === ss[i]; });
+    }
+    function opMatch(op, p, specStr) {
+      var s;
+      switch (op) {
+        case '==':
+          if (/\.\*$/.test(specStr)) return eqWild(p, specStr);
+          s = new Ver(specStr);
+          return cmp(s.local ? p : p.pub(), s) === 0;
+        case '!=': return !opMatch('==', p, specStr);
+        case '<=': return cmp(p.pub(), new Ver(specStr)) <= 0;
+        case '>=': return cmp(p.pub(), new Ver(specStr)) >= 0;
+        case '<':
+          s = new Ver(specStr);
+          if (!(cmp(p, s) < 0)) return false;
+          if (!s.isPre() && p.isPre()) {
+            var earliest = Object.create(Ver.prototype); Object.assign(earliest, s); earliest.dev = 0n; earliest.local = null;
+            if (cmp(p, earliest) >= 0) return false;
+          }
+          return true;
+        case '>':
+          s = new Ver(specStr);
+          if (!(cmp(p, s) > 0)) return false;
+          if (!s.isPost() && p.isPost()) {
+            var base = Object.create(Ver.prototype); Object.assign(base, p); base.post = null; base.dev = null; base.local = null;
+            if (cmp(base, s) === 0) return false;
+          }
+          if (p.local !== null && cmp(p.pub(), s) === 0) return false;
+          return true;
+        case '~=':
+          var parts = vsplit(specStr), keep = [];
+          for (var i = 0; i < parts.length; i++) { if (/^(dev|a|b|rc|post)/.test(parts[i])) break; keep.push(parts[i]); }
+          keep = keep.slice(0, -1);
+          var prefix = keep[0] + '!' + keep.slice(1).join('.') + '.*';
+          return opMatch('>=', p, specStr) && opMatch('==', p, prefix);
+      }
+      return false;
+    }
+    function SpecSet(text) {
+      this.specs = text.split(',').map(function (x) { return x.trim(); }).filter(Boolean).map(function (x) { return new Spec(x); });
+    }
+    SpecSet.prototype.toString = function () { return this.specs.map(String).sort().join(','); };
+    SpecSet.prototype.prereleases = function () {
+      if (!this.specs.length) return null;
+      return this.specs.some(function (s) { return s.prereleases(); }) ? true : null;
+    };
+    // Does a version string satisfy every specifier (pre-release policy aside)?
+    SpecSet.prototype.allMatch = function (item) {
+      var p = tryVer(item);
+      if (!p) return this.specs.length > 0 && this.specs.every(function (s) { return s.op === '===' && item.toLowerCase() === s.v.toLowerCase(); });
+      return this.specs.every(function (s) { return s.op === '===' ? item.toLowerCase() === s.v.toLowerCase() : opMatch(s.op, p, s.v); });
+    };
+    // SpecifierSet.filter(items, prereleases)
+    SpecSet.prototype.filter = function (items, prereleases) {
+      if (prereleases === null && this.prereleases() !== null) prereleases = this.prereleases();
+      var self = this, passed;
+      if (this.specs.length) {
+        passed = items.filter(function (it) {
+          var p = tryVer(it);
+          if (prereleases === false && p && p.isPre()) return false;
+          return self.allMatch(it);
+        });
+        if (prereleases !== null) return passed;
+      } else {
+        if (prereleases === true) return items.slice();
+        if (prereleases === false) return items.filter(function (it) { var p = tryVer(it); return !p || !p.isPre(); });
+        passed = items.slice();
+      }
+      var finals = passed.filter(function (it) { var p = tryVer(it); return p && !p.isPre(); });
+      if (!finals.length) return passed;
+      return passed.filter(function (it) { var p = tryVer(it); return !p || !p.isPre(); });
+    };
+    function pyRepr(s) { return s.indexOf("'") !== -1 && s.indexOf('"') === -1 ? '"' + s + '"' : "'" + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; }
+    // The ==prefix.* half of ~=V, as _compare_compatible builds it (epoch 0 left out for display).
+    function compatPrefix(specStr) {
+      var parts = vsplit(specStr), keep = [];
+      for (var i = 0; i < parts.length; i++) { if (/^(dev|a|b|rc|post)/.test(parts[i])) break; keep.push(parts[i]); }
+      keep = keep.slice(0, -1);
+      return (keep[0] === '0' ? '' : keep[0] + '!') + keep.slice(1).join('.') + '.*';
+    }
+    return { Ver: Ver, Spec: Spec, SpecSet: SpecSet, cmp: cmp, tryVer: tryVer, compatPrefix: compatPrefix };
+  })();
+
+  // =============================================================== RubyGems
+  // Gem::Version, Gem::Requirement and Gem::Dependency#match? at tag v4.0.22.
+  var RUBY = (function () {
+    // VERSION_PATTERN's (?>...) is atomic in Ruby. The token after it never starts with
+    // [0-9a-zA-Z], so a plain non-capturing group accepts exactly the same strings.
+    var VP = '[0-9]+(?:\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?';
+    var ANCH = new RegExp('^[ \\t\\r\\n\\f\\v]*(' + VP + ')?[ \\t\\r\\n\\f\\v]*$');
+    var REQ = new RegExp('^[ \\t\\r\\n\\f\\v]*(=|!=|>|<|>=|<=|~>)?[ \\t\\r\\n\\f\\v]*(' + VP + ')[ \\t\\r\\n\\f\\v]*$');
+    function correct(s) { return ANCH.test(s); }
+    function Ver(text) {
+      if (!correct(text)) throw new Error('Malformed version number string ' + text);
+      if (/^[ \t\r\n\f\v]*$/.test(text)) text = '0';
+      this.version = text.replace(/^[ \t\r\n\f\v\0]+|[ \t\r\n\f\v\0]+$/g, '').split('-').join('.pre.');
+    }
+    function partition(s) {
+      return (s.match(/\d+|[a-z]+/gi) || []).map(function (x) { return /^\d/.test(x) ? BigInt(x) : x; });
+    }
+    Ver.prototype.isPre = function () { return /[a-zA-Z]/.test(this.version); };
+    Ver.prototype.segments = function () { return partition(this.version); };
+    Ver.prototype.canon = function () {
+      var c = this.version.replace(/(?<=[a-zA-Z.])[.0]+$/, '');
+      if (this.isPre()) c = c.replace(/(?<=\.|^)[0.]+(?=[a-zA-Z])/, '');
+      return partition(c);
+    };
+    Ver.prototype.bump = function () {
+      var s = this.segments();
+      while (s.some(function (x) { return typeof x === 'string'; })) s.pop();
+      if (s.length > 1) s.pop();
+      s[s.length - 1] = s[s.length - 1] + 1n;
+      return new Ver(s.join('.'));
+    };
+    Ver.prototype.release = function () {
+      if (!this.isPre()) return this;
+      var s = this.segments();
+      while (s.some(function (x) { return typeof x === 'string'; })) s.pop();
+      return new Ver(s.join('.'));
+    };
+    function cmp(a, b) {
+      if (a.version === b.version) return 0;
+      var L = a.canon(), R = b.canon();
+      var ls = L.length, rs = R.length, lim = Math.min(ls, rs), i = 0;
+      function same(x, y) { return typeof x === typeof y && x === y; }
+      while (i < lim) {
+        var l = L[i], r = R[i]; i++;
+        if (same(l, r)) continue;
+        if (typeof l === 'string' && typeof r === 'bigint') return -1;
+        if (typeof l === 'bigint' && typeof r === 'string') return 1;
+        return l < r ? -1 : l > r ? 1 : 0;
+      }
+      var x;
+      if (L[i] === undefined) {
+        for (; i < rs; i++) { x = R[i]; if (typeof x === 'string') return 1; if (x !== 0n) return -1; }
+      } else {
+        for (; i < ls; i++) { x = L[i]; if (typeof x === 'string') return -1; if (x !== 0n) return 1; }
+      }
+      return 0;
+    }
+    var OPS = {
+      '=': function (v, r) { return cmp(v, r) === 0; },
+      '!=': function (v, r) { return cmp(v, r) !== 0; },
+      '>': function (v, r) { return cmp(v, r) > 0; },
+      '<': function (v, r) { return cmp(v, r) < 0; },
+      '>=': function (v, r) { return cmp(v, r) >= 0; },
+      '<=': function (v, r) { return cmp(v, r) <= 0; },
+      '~>': function (v, r) { return cmp(v, r) >= 0 && cmp(v.release(), r.bump()) < 0; }
+    };
+    function inspect(s) { return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\t/g, '\\t') + '"'; }
+    function parseReq(s) {
+      var m = REQ.exec(s);
+      if (!m) throw new Error('Illformed requirement [' + inspect(s) + ']');
+      return [m[1] || '=', new Ver(m[2])];
+    }
+    function Req(parts) {
+      var uniq = [];
+      parts.forEach(function (p) { if (uniq.indexOf(p) === -1) uniq.push(p); });
+      this.reqs = uniq.length ? uniq.map(parseReq) : [['>=', new Ver('0')]];
+    }
+    Req.prototype.toString = function () { return this.reqs.map(function (r) { return r[0] + ' ' + r[1].version; }).join(', '); };
+    Req.prototype.satisfiedBy = function (v) { return this.reqs.every(function (r) { return OPS[r[0]](v, r[1]); }); };
+    Req.prototype.isPre = function () { return this.reqs.some(function (r) { return r[1].isPre(); }); };
+    Req.prototype.none = function () { return this.reqs.length === 1 && this.reqs[0][0] === '>=' && this.reqs[0][1].version === '0'; };
+    // Gem::Dependency#match? with allow_prerelease false
+    Req.prototype.depMatch = function (v) {
+      if (this.none() && !v.isPre()) return true;
+      if (v.isPre() && !this.isPre()) return false;
+      return this.satisfiedBy(v);
+    };
+    return { Ver: Ver, Req: Req, cmp: cmp, correct: correct };
+  })();
+
+  return { NPM: NPM, CARGO: CARGO, PHPV: PHPV, COMPOSER: COMPOSER, PEP: PEP, RUBY: RUBY };
+})();
+/* ENGINES-END */
+</script>
+<script>
+var VECTORS = {"versions":["0.9.0","1.0.0","1.1.0","1.2.0","1.2.3","1.2.4","1.2.7","1.2.9","1.3.0","1.4.9","1.5.0","1.9.0","2.0.0","2.0.1","2.1.0","3.0.0","0.2.3","0.2.9","0.3.0","1.2.3-beta.2","1.2.3-beta.5","1.2.4-rc.1","1.3.0-rc.1","1.3.0rc1","1.5.0rc1","1.3.0-RC1","2.0.0-alpha","1.2.0-dev","1.2.0.dev1","1.2a1","1.2","1.9","1","v1.2.3","1.2.3.4","1!2.0","1.0.0+build.1","1.2.3+abc","1.0.post1","1.2.post1","1.2.0.post1","01.2.3","junk"],"npm":{"v":[["0.9.0","0.9.0"],["1.0.0","1.0.0"],["1.1.0","1.1.0"],["1.2.0","1.2.0"],["1.2.3","1.2.3"],["1.2.4","1.2.4"],["1.2.7","1.2.7"],["1.2.9","1.2.9"],["1.3.0","1.3.0"],["1.4.9","1.4.9"],["1.5.0","1.5.0"],["1.9.0","1.9.0"],["2.0.0","2.0.0"],["2.0.1","2.0.1"],["2.1.0","2.1.0"],["3.0.0","3.0.0"],["0.2.3","0.2.3"],["0.2.9","0.2.9"],["0.3.0","0.3.0"],["1.2.3-beta.2","1.2.3-beta.2"],["1.2.3-beta.5","1.2.3-beta.5"],["1.2.4-rc.1","1.2.4-rc.1"],["1.3.0-rc.1","1.3.0-rc.1"],["1.3.0rc1",null],["1.5.0rc1",null],["1.3.0-RC1","1.3.0-RC1"],["2.0.0-alpha","2.0.0-alpha"],["1.2.0-dev","1.2.0-dev"],["1.2.0.dev1",null],["1.2a1",null],["1.2",null],["1.9",null],["1",null],["v1.2.3","1.2.3"],["1.2.3.4",null],["1!2.0",null],["1.0.0+build.1","1.0.0"],["1.2.3+abc","1.2.3"],["1.0.post1",null],["1.2.post1",null],["1.2.0.post1",null],["01.2.3",null],["junk",null]],"r":[["~1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["1.2.3",1,"1.2.3","00001000000000000000000--000-----1--01-----"],["1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["=1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["~>1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["~=1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["^1.2.3",1,">=1.2.3 \u003c2.0.0-0","00001111111100000000000--000-----1--01-----"],["^0.2.3",1,">=0.2.3 \u003c0.3.0-0","00000000000000001100000--000-----0--00-----"],[">=1.2",1,">=1.2.0","00011111111111110000000--000-----1--01-----"],["^1.2.3-beta.2",1,">=1.2.3-beta.2 \u003c2.0.0-0","00001111111100000001100--000-----1--01-----"],[">=1.2, \u003c1.5",0,"Invalid comparator: >=1.2,",""],[">=1.2 \u003c1.5",1,">=1.2.0 \u003c1.5.0-0","00011111110000000000000--000-----1--01-----"],[">=1.2 || \u003c1.0",1,">=1.2.0||\u003c1.0.0-0","10011111111111111110000--000-----1--01-----"],["1.2 - 2",1,">=1.2.0 \u003c3.0.0-0","00011111111111100000000--000-----1--01-----"],["~1",1,">=1.0.0 \u003c2.0.0-0","01111111111100000000000--000-----1--11-----"],["~=1",1,">=1.0.0 \u003c2.0.0-0","01111111111100000000000--000-----1--11-----"],["~> 1",1,">=1.0.0 \u003c2.0.0-0","01111111111100000000000--000-----1--11-----"],["1.*",1,">=1.0.0 \u003c2.0.0-0","01111111111100000000000--000-----1--11-----"],["*",1,"","11111111111111111110000--000-----1--11-----"],["x",1,"","11111111111111111110000--000-----1--11-----"],["1.2.x",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["1.x.3",0,"Invalid comparator: 1.x.3",""],[">1",1,">=2.0.0","00000000000011110000000--000-----0--00-----"],["\u003c=1.2",1,"\u003c1.3.0-0","11111111000000001110000--000-----1--11-----"],[">1.2.3",1,">1.2.3","00000111111111110000000--000-----0--00-----"],["\u003c2",1,"\u003c2.0.0-0","11111111111100001110000--000-----1--11-----"],["1.2.3 - 2.3.4",1,">=1.2.3 \u003c=2.3.4","00001111111111100000000--000-----1--01-----"],["1.2.3 - 2",1,">=1.2.3 \u003c3.0.0-0","00001111111111100000000--000-----1--01-----"],["~1.2.3-beta.2",1,">=1.2.3-beta.2 \u003c1.3.0-0","00001111000000000001100--000-----1--01-----"],["~1.2.3",1,">=1.2.3 \u003c1.3.0-0","00001111000000000000000--000-----1--01-----"],[">=1.2.3+build",1,">=1.2.3","00001111111111110000000--000-----1--01-----"],["^0.0.3",1,">=0.0.3 \u003c0.0.4-0","00000000000000000000000--000-----0--00-----"],["^0.0",1,"\u003c0.1.0-0","00000000000000000000000--000-----0--00-----"],["v1.2.3",1,"1.2.3","00001000000000000000000--000-----1--01-----"],["=v1.2.3",1,"1.2.3","00001000000000000000000--000-----1--01-----"],[">= 1.2",1,">=1.2.0","00011111111111110000000--000-----1--01-----"],["~ 1.2",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["^ 1.2.3",1,">=1.2.3 \u003c2.0.0-0","00001111111100000000000--000-----1--01-----"],["1.2.3,1.5",0,"Invalid comparator: 1.2.3,1.5",""],["^1.2 || ^2",1,">=1.2.0 \u003c2.0.0-0||>=2.0.0 \u003c3.0.0-0","00011111111111100000000--000-----1--01-----"],[">=1.2.0 \u003c1.3.0-0",1,">=1.2.0 \u003c1.3.0-0","00011111000000000000000--000-----1--01-----"],["\u003c0.0.0-0",1,"\u003c0.0.0-0","00000000000000000000000--000-----0--00-----"],["!=1.2",0,"Invalid comparator: !=1.2",""],["1.2.3.4",0,"Invalid comparator: 1.2.3.4",""],[">=0.0.0",1,"","11111111111111111110000--000-----1--11-----"],["~> 1.2.3",1,">=1.2.3 \u003c1.3.0-0","00001111000000000000000--000-----1--01-----"],["1.2.3-beta.2 - 1.2.3",1,">=1.2.3-beta.2 \u003c=1.2.3","00001000000000000001100--000-----1--01-----"],["^1.2.3 || >=2.0.0 \u003c2.0.1",1,">=1.2.3 \u003c2.0.0-0||>=2.0.0 \u003c2.0.1","00001111111110000000000--000-----1--01-----"],["foo",0,"Invalid comparator: foo",""],["1.2 - 2.x",1,">=1.2.0 \u003c3.0.0-0","00011111111111100000000--000-----1--01-----"],[">=1.2.3 \u003c1.2.3",1,">=1.2.3 \u003c1.2.3","00000000000000000000000--000-----0--00-----"],["~0.2.3",1,">=0.2.3 \u003c0.3.0-0","00000000000000001100000--000-----0--00-----"],["2.x || 1.2.x",1,">=2.0.0 \u003c3.0.0-0||>=1.2.0 \u003c1.3.0-0","00011111000011100000000--000-----1--01-----"]]},"cargo":{"v":[["0.9.0","0.9.0"],["1.0.0","1.0.0"],["1.1.0","1.1.0"],["1.2.0","1.2.0"],["1.2.3","1.2.3"],["1.2.4","1.2.4"],["1.2.7","1.2.7"],["1.2.9","1.2.9"],["1.3.0","1.3.0"],["1.4.9","1.4.9"],["1.5.0","1.5.0"],["1.9.0","1.9.0"],["2.0.0","2.0.0"],["2.0.1","2.0.1"],["2.1.0","2.1.0"],["3.0.0","3.0.0"],["0.2.3","0.2.3"],["0.2.9","0.2.9"],["0.3.0","0.3.0"],["1.2.3-beta.2","1.2.3-beta.2"],["1.2.3-beta.5","1.2.3-beta.5"],["1.2.4-rc.1","1.2.4-rc.1"],["1.3.0-rc.1","1.3.0-rc.1"],["1.3.0rc1",null],["1.5.0rc1",null],["1.3.0-RC1","1.3.0-RC1"],["2.0.0-alpha","2.0.0-alpha"],["1.2.0-dev","1.2.0-dev"],["1.2.0.dev1",null],["1.2a1",null],["1.2",null],["1.9",null],["1",null],["v1.2.3",null],["1.2.3.4",null],["1!2.0",null],["1.0.0+build.1","1.0.0+build.1"],["1.2.3+abc","1.2.3+abc"],["1.0.post1",null],["1.2.post1",null],["1.2.0.post1",null],["01.2.3",null],["junk",null]],"r":[["~1.2",1,"~1.2","00011111000000000000000--000--------01-----"],["1.2.3",1,"^1.2.3","00001111111100000000000--000--------01-----"],["1.2",1,"^1.2","00011111111100000000000--000--------01-----"],["=1.2",1,"=1.2","00011111000000000000000--000--------01-----"],["~>1.2",0,"unexpected character '>' while parsing major version number",""],["~=1.2",0,"unexpected character '=' while parsing major version number",""],["^1.2.3",1,"^1.2.3","00001111111100000000000--000--------01-----"],["^0.2.3",1,"^0.2.3","00000000000000001100000--000--------00-----"],[">=1.2",1,">=1.2","00011111111111110000000--000--------01-----"],["^1.2.3-beta.2",1,"^1.2.3-beta.2","00001111111100000001100--000--------01-----"],[">=1.2, \u003c1.5",1,">=1.2, \u003c1.5","00011111110000000000000--000--------01-----"],[">=1.2 \u003c1.5",0,"expected comma after minor version number, found '\u003c'",""],[">=1.2 || \u003c1.0",0,"expected comma after minor version number, found '|'",""],["1.2 - 2",0,"expected comma after minor version number, found '-'",""],["~1",1,"~1","01111111111100000000000--000--------11-----"],["~=1",0,"unexpected character '=' while parsing major version number",""],["~> 1",0,"unexpected character '>' while parsing major version number",""],["1.*",1,"1.*","01111111111100000000000--000--------11-----"],["*",1,"*","11111111111111111110000--000--------11-----"],["x",1,"*","11111111111111111110000--000--------11-----"],["1.2.*",1,"1.2.*","00011111000000000000000--000--------01-----"],["=1.2.3",1,"=1.2.3","00001000000000000000000--000--------01-----"],["=1.2.3-beta.2",1,"=1.2.3-beta.2","00000000000000000001000--000--------00-----"],[">1",1,">1","00000000000011110000000--000--------00-----"],[">1.2",1,">1.2","00000000111111110000000--000--------00-----"],["\u003c1.2",1,"\u003c1.2","11100000000000001110000--000--------10-----"],["\u003c=1.2",1,"\u003c=1.2","11111111000000001110000--000--------11-----"],[">=1",1,">=1","01111111111111110000000--000--------11-----"],["1.2.3, 1.5",1,"^1.2.3, ^1.5","00000000001100000000000--000--------00-----"],["^0.0.3",1,"^0.0.3","00000000000000000000000--000--------00-----"],["^0.0",1,"^0.0","00000000000000000000000--000--------00-----"],["^0",1,"^0","10000000000000001110000--000--------00-----"],["~1.2.3",1,"~1.2.3","00001111000000000000000--000--------01-----"],["~1.2.3-beta.2",1,"~1.2.3-beta.2","00001111000000000001100--000--------01-----"],["v1.2.3",0,"unexpected character 'v' while parsing major version number",""],["01.2.3",0,"invalid leading zero in major version number",""],["1.2.3 - 2.3.4",0,"expected comma after patch version number, found '-'",""],[">=1.2,\u003c1.5",1,">=1.2, \u003c1.5","00011111110000000000000--000--------01-----"],[">= 1.2 , \u003c 1.5",1,">=1.2, \u003c1.5","00011111110000000000000--000--------01-----"],["1.2.3+build",1,"^1.2.3","00001111111100000000000--000--------01-----"],["*, 1.0",0,"wildcard req (*) must be the only comparator in the version req",""],["1.*.3",0,"unexpected character after wildcard in version req",""],["1.2.3-01",0,"invalid leading zero in pre-release identifier",""],[">=1.2.0, \u003c1.3.0",1,">=1.2.0, \u003c1.3.0","00011111000000000000000--000--------01-----"],[">=1.2.3-beta.2, \u003c2.0.0",1,">=1.2.3-beta.2, \u003c2.0.0","00001111111100000001100--000--------01-----"],["1.2.3 || 2.0.0",0,"expected comma after patch version number, found '|'",""]],"up":[["ok","1.0.0"],["str","1.0.0","^1.0.0"],["match","1.0.0","1.0.0",true],["match","1.0.0","1.1.0",true],["match","1.0.0","1.0.1",true],["match","1.0.0","0.9.9",false],["match","1.0.0","0.10.0",false],["match","1.0.0","0.1.0",false],["match","1.0.0","1.0.0-pre",false],["match","1.0.0","1.0.1-pre",false],["ok","=1.0.0"],["str","=1.0.0","=1.0.0"],["match","=1.0.0","1.0.0",true],["match","=1.0.0","1.0.1",false],["match","=1.0.0","0.9.9",false],["match","=1.0.0","0.10.0",false],["match","=1.0.0","0.1.0",false],["match","=1.0.0","1.0.0-pre",false],["ok","=0.9.0"],["str","=0.9.0","=0.9.0"],["match","=0.9.0","0.9.0",true],["match","=0.9.0","0.9.1",false],["match","=0.9.0","1.9.0",false],["match","=0.9.0","0.0.9",false],["match","=0.9.0","0.9.0-pre",false],["ok","=0.0.2"],["str","=0.0.2","=0.0.2"],["match","=0.0.2","0.0.2",true],["match","=0.0.2","0.0.1",false],["match","=0.0.2","0.0.3",false],["match","=0.0.2","0.0.2-pre",false],["ok","=0.1.0-beta2.a"],["str","=0.1.0-beta2.a","=0.1.0-beta2.a"],["match","=0.1.0-beta2.a","0.1.0-beta2.a",true],["match","=0.1.0-beta2.a","0.9.1",false],["match","=0.1.0-beta2.a","0.1.0",false],["match","=0.1.0-beta2.a","0.1.1-beta2.a",false],["match","=0.1.0-beta2.a","0.1.0-beta2",false],["ok","=0.1.0+meta"],["str","=0.1.0+meta","=0.1.0"],["match","=0.1.0+meta","0.1.0",true],["match","=0.1.0+meta","0.1.0+meta",true],["match","=0.1.0+meta","0.1.0+any",true],["ok",">= 1.0.0"],["str",">= 1.0.0",">=1.0.0"],["match",">= 1.0.0","1.0.0",true],["match",">= 1.0.0","2.0.0",true],["match",">= 1.0.0","0.1.0",false],["match",">= 1.0.0","0.0.1",false],["match",">= 1.0.0","1.0.0-pre",false],["match",">= 1.0.0","2.0.0-pre",false],["ok",">= 2.1.0-alpha2"],["str",">= 2.1.0-alpha2",">=2.1.0-alpha2"],["match",">= 2.1.0-alpha2","2.1.0-alpha2",true],["match",">= 2.1.0-alpha2","2.1.0-alpha3",true],["match",">= 2.1.0-alpha2","2.1.0",true],["match",">= 2.1.0-alpha2","3.0.0",true],["match",">= 2.1.0-alpha2","2.0.0",false],["match",">= 2.1.0-alpha2","2.1.0-alpha1",false],["match",">= 2.1.0-alpha2","2.0.0-alpha2",false],["match",">= 2.1.0-alpha2","3.0.0-alpha2",false],["ok","\u003c 1.0.0"],["str","\u003c 1.0.0","\u003c1.0.0"],["match","\u003c 1.0.0","0.1.0",true],["match","\u003c 1.0.0","0.0.1",true],["match","\u003c 1.0.0","1.0.0",false],["match","\u003c 1.0.0","1.0.0-beta",false],["match","\u003c 1.0.0","1.0.1",false],["match","\u003c 1.0.0","0.9.9-alpha",false],["ok","\u003c= 2.1.0-alpha2"],["match","\u003c= 2.1.0-alpha2","2.1.0-alpha2",true],["match","\u003c= 2.1.0-alpha2","2.1.0-alpha1",true],["match","\u003c= 2.1.0-alpha2","2.0.0",true],["match","\u003c= 2.1.0-alpha2","1.0.0",true],["match","\u003c= 2.1.0-alpha2","2.1.0",false],["match","\u003c= 2.1.0-alpha2","2.2.0-alpha1",false],["match","\u003c= 2.1.0-alpha2","2.0.0-alpha2",false],["match","\u003c= 2.1.0-alpha2","1.0.0-alpha2",false],["ok",">1.0.0-alpha, \u003c1.0.0"],["match",">1.0.0-alpha, \u003c1.0.0","1.0.0-beta",true],["ok",">1.0.0-alpha, \u003c1.0"],["match",">1.0.0-alpha, \u003c1.0","1.0.0-beta",false],["ok",">1.0.0-alpha, \u003c1"],["match",">1.0.0-alpha, \u003c1","1.0.0-beta",false],["ok","> 0.0.9, \u003c= 2.5.3"],["str","> 0.0.9, \u003c= 2.5.3",">0.0.9, \u003c=2.5.3"],["match","> 0.0.9, \u003c= 2.5.3","0.0.10",true],["match","> 0.0.9, \u003c= 2.5.3","1.0.0",true],["match","> 0.0.9, \u003c= 2.5.3","2.5.3",true],["match","> 0.0.9, \u003c= 2.5.3","0.0.8",false],["match","> 0.0.9, \u003c= 2.5.3","2.5.4",false],["ok","0.3.0, 0.4.0"],["str","0.3.0, 0.4.0","^0.3.0, ^0.4.0"],["match","0.3.0, 0.4.0","0.0.8",false],["match","0.3.0, 0.4.0","0.3.0",false],["match","0.3.0, 0.4.0","0.4.0",false],["ok","\u003c= 0.2.0, >= 0.5.0"],["str","\u003c= 0.2.0, >= 0.5.0","\u003c=0.2.0, >=0.5.0"],["match","\u003c= 0.2.0, >= 0.5.0","0.0.8",false],["match","\u003c= 0.2.0, >= 0.5.0","0.3.0",false],["match","\u003c= 0.2.0, >= 0.5.0","0.5.1",false],["ok","0.1.0, 0.1.4, 0.1.6"],["str","0.1.0, 0.1.4, 0.1.6","^0.1.0, ^0.1.4, ^0.1.6"],["match","0.1.0, 0.1.4, 0.1.6","0.1.6",true],["match","0.1.0, 0.1.4, 0.1.6","0.1.9",true],["match","0.1.0, 0.1.4, 0.1.6","0.1.0",false],["match","0.1.0, 0.1.4, 0.1.6","0.1.4",false],["match","0.1.0, 0.1.4, 0.1.6","0.2.0",false],["err","> 0.1.0,","unexpected end of input while parsing major version number"],["err","> 0.3.0, ,","unexpected character ',' while parsing major version number"],["ok",">=0.5.1-alpha3, \u003c0.6"],["str",">=0.5.1-alpha3, \u003c0.6",">=0.5.1-alpha3, \u003c0.6"],["match",">=0.5.1-alpha3, \u003c0.6","0.5.1-alpha3",true],["match",">=0.5.1-alpha3, \u003c0.6","0.5.1-alpha4",true],["match",">=0.5.1-alpha3, \u003c0.6","0.5.1-beta",true],["match",">=0.5.1-alpha3, \u003c0.6","0.5.1",true],["match",">=0.5.1-alpha3, \u003c0.6","0.5.5",true],["match",">=0.5.1-alpha3, \u003c0.6","0.5.1-alpha1",false],["match",">=0.5.1-alpha3, \u003c0.6","0.5.2-alpha3",false],["match",">=0.5.1-alpha3, \u003c0.6","0.5.5-pre",false],["match",">=0.5.1-alpha3, \u003c0.6","0.5.0-pre",false],["match",">=0.5.1-alpha3, \u003c0.6","0.6.0",false],["match",">=0.5.1-alpha3, \u003c0.6","0.6.0-pre",false],["err","1.2.3 - 2.3.4","expected comma after patch version number, found '-'"],["err",">1, >2, >3, >4, >5, >6, >7, >8, >9, >10, >11, >12, >13, >14, >15, >16, >17, >18, >19, >20, >21, >22, >23, >24, >25, >26, >27, >28, >29, >30, >31, >32, >33","excessive number of version comparators"],["err","> 0.0.9 \u003c= 2.5.3","expected comma after patch version number, found '\u003c'"],["ok","~1"],["match","~1","1.0.0",true],["match","~1","1.0.1",true],["match","~1","1.1.1",true],["match","~1","0.9.1",false],["match","~1","2.9.0",false],["match","~1","0.0.9",false],["ok","~1.2"],["match","~1.2","1.2.0",true],["match","~1.2","1.2.1",true],["match","~1.2","1.1.1",false],["match","~1.2","1.3.0",false],["match","~1.2","0.0.9",false],["ok","~1.2.2"],["match","~1.2.2","1.2.2",true],["match","~1.2.2","1.2.4",true],["match","~1.2.2","1.2.1",false],["match","~1.2.2","1.9.0",false],["match","~1.2.2","1.0.9",false],["match","~1.2.2","2.0.1",false],["match","~1.2.2","0.1.3",false],["ok","~1.2.3-beta.2"],["match","~1.2.3-beta.2","1.2.3",true],["match","~1.2.3-beta.2","1.2.4",true],["match","~1.2.3-beta.2","1.2.3-beta.2",true],["match","~1.2.3-beta.2","1.2.3-beta.4",true],["match","~1.2.3-beta.2","1.3.3",false],["match","~1.2.3-beta.2","1.1.4",false],["match","~1.2.3-beta.2","1.2.3-beta.1",false],["match","~1.2.3-beta.2","1.2.4-beta.2",false],["ok","^1"],["match","^1","1.1.2",true],["match","^1","1.1.0",true],["match","^1","1.2.1",true],["match","^1","1.0.1",true],["match","^1","0.9.1",false],["match","^1","2.9.0",false],["match","^1","0.1.4",false],["match","^1","1.0.0-beta1",false],["match","^1","0.1.0-alpha",false],["match","^1","1.0.1-pre",false],["ok","^1.1"],["match","^1.1","1.1.2",true],["match","^1.1","1.1.0",true],["match","^1.1","1.2.1",true],["match","^1.1","0.9.1",false],["match","^1.1","2.9.0",false],["match","^1.1","1.0.1",false],["match","^1.1","0.1.4",false],["ok","^1.1.2"],["match","^1.1.2","1.1.2",true],["match","^1.1.2","1.1.4",true],["match","^1.1.2","1.2.1",true],["match","^1.1.2","0.9.1",false],["match","^1.1.2","2.9.0",false],["match","^1.1.2","1.1.1",false],["match","^1.1.2","0.0.1",false],["match","^1.1.2","1.1.2-alpha1",false],["match","^1.1.2","1.1.3-alpha1",false],["match","^1.1.2","2.9.0-alpha1",false],["ok","^0.1.2"],["match","^0.1.2","0.1.2",true],["match","^0.1.2","0.1.4",true],["match","^0.1.2","0.9.1",false],["match","^0.1.2","2.9.0",false],["match","^0.1.2","1.1.1",false],["match","^0.1.2","0.0.1",false],["match","^0.1.2","0.1.2-beta",false],["match","^0.1.2","0.1.3-alpha",false],["match","^0.1.2","0.2.0-pre",false],["ok","^0.5.1-alpha3"],["match","^0.5.1-alpha3","0.5.1-alpha3",true],["match","^0.5.1-alpha3","0.5.1-alpha4",true],["match","^0.5.1-alpha3","0.5.1-beta",true],["match","^0.5.1-alpha3","0.5.1",true],["match","^0.5.1-alpha3","0.5.5",true],["match","^0.5.1-alpha3","0.5.1-alpha1",false],["match","^0.5.1-alpha3","0.5.2-alpha3",false],["match","^0.5.1-alpha3","0.5.5-pre",false],["match","^0.5.1-alpha3","0.5.0-pre",false],["match","^0.5.1-alpha3","0.6.0",false],["ok","^0.0.2"],["match","^0.0.2","0.0.2",true],["match","^0.0.2","0.9.1",false],["match","^0.0.2","2.9.0",false],["match","^0.0.2","1.1.1",false],["match","^0.0.2","0.0.1",false],["match","^0.0.2","0.1.4",false],["ok","^0.0"],["match","^0.0","0.0.2",true],["match","^0.0","0.0.0",true],["match","^0.0","0.9.1",false],["match","^0.0","2.9.0",false],["match","^0.0","1.1.1",false],["match","^0.0","0.1.4",false],["ok","^0"],["match","^0","0.9.1",true],["match","^0","0.0.2",true],["match","^0","0.0.0",true],["match","^0","2.9.0",false],["match","^0","1.1.1",false],["ok","^1.4.2-beta.5"],["match","^1.4.2-beta.5","1.4.2",true],["match","^1.4.2-beta.5","1.4.3",true],["match","^1.4.2-beta.5","1.4.2-beta.5",true],["match","^1.4.2-beta.5","1.4.2-beta.6",true],["match","^1.4.2-beta.5","1.4.2-c",true],["match","^1.4.2-beta.5","0.9.9",false],["match","^1.4.2-beta.5","2.0.0",false],["match","^1.4.2-beta.5","1.4.2-alpha",false],["match","^1.4.2-beta.5","1.4.2-beta.4",false],["match","^1.4.2-beta.5","1.4.3-beta.5",false],["err","","unexpected end of input while parsing major version number"],["ok","*"],["match","*","0.9.1",true],["match","*","2.9.0",true],["match","*","0.0.9",true],["match","*","1.0.1",true],["match","*","1.1.1",true],["match","*","1.0.0-pre",false],["same","x","*"],["same","X","*"],["ok","1.*"],["match","1.*","1.2.0",true],["match","1.*","1.2.1",true],["match","1.*","1.1.1",true],["match","1.*","1.3.0",true],["match","1.*","0.0.9",false],["match","1.*","1.2.0-pre",false],["same","1.x","1.*"],["same","1.X","1.*"],["same","1.*.*","1.*"],["ok","1.2.*"],["match","1.2.*","1.2.0",true],["match","1.2.*","1.2.2",true],["match","1.2.*","1.2.4",true],["match","1.2.*","1.9.0",false],["match","1.2.*","1.0.9",false],["match","1.2.*","2.0.1",false],["match","1.2.*","0.1.3",false],["match","1.2.*","1.2.2-pre",false],["same","1.2.x","1.2.*"],["same","1.2.X","1.2.*"],["err","=1.2.3 || =2.3.4","expected comma after patch version number, found '|'"],["err","1.1 || =1.2.3","expected comma after minor version number, found '|'"],["err","6.* || 8.* || >= 10.*","expected comma after minor version number, found '|'"],["match","*","0.0.1",true],["match","*","0.1.0",true],["match","*","1.0.0",true],["ok","=2.1.1-really.0"],["match","=2.1.1-really.0","2.1.1-really.0",true],["err","\u0000","unexpected character '\\0' while parsing major version number"],["err",">= >= 0.0.2","unexpected character '>' while parsing major version number"],["err",">== 0.0.2","unexpected character '=' while parsing major version number"],["err","a.0.0","unexpected character 'a' while parsing major version number"],["err","1.0.0-","empty identifier segment in pre-release identifier"],["err",">=","unexpected end of input while parsing major version number"],["ok","0.*.*"],["str","0.*.*","0.*"],["match","0.*.*","0.5.0",true],["ok","0.0.*"],["str","0.0.*","0.0.*"],["err","*.1","unexpected character after wildcard in version req"],["err","1.*.1","unexpected character after wildcard in version req"],["err",">=1.*.1","unexpected character after wildcard in version req"],["err","*, 0.20.0-any","wildcard req (*) must be the only comparator in the version req"],["err","0.20.0-any, *","wildcard req (*) must be the only comparator in the version req"],["err","0.20.0-any, *, 1.0","wildcard req (*) must be the only comparator in the version req"],["ok","= 1.2.3-1a"],["ok","= 1.2.3+1a"],["ok","= 1.2.3-01a"],["ok","= 1.2.3+01"],["ok","= 1.2.3-1+1"],["ok","= 1.2.3-1-1+1-1-1"],["ok","= 1.2.3-1a+1a"],["ok","= 1.2.3-1a-1a+1a-1a-1a"],["ok","> 1.2.3-1a"],["ok","> 1.2.3+1a"],["ok","> 1.2.3-01a"],["ok","> 1.2.3+01"],["ok","> 1.2.3-1+1"],["ok","> 1.2.3-1-1+1-1-1"],["ok","> 1.2.3-1a+1a"],["ok","> 1.2.3-1a-1a+1a-1a-1a"],["ok",">= 1.2.3-1a"],["ok",">= 1.2.3+1a"],["ok",">= 1.2.3-01a"],["ok",">= 1.2.3+01"],["ok",">= 1.2.3-1+1"],["ok",">= 1.2.3-1-1+1-1-1"],["ok",">= 1.2.3-1a+1a"],["ok",">= 1.2.3-1a-1a+1a-1a-1a"],["ok","\u003c 1.2.3-1a"],["ok","\u003c 1.2.3+1a"],["ok","\u003c 1.2.3-01a"],["ok","\u003c 1.2.3+01"],["ok","\u003c 1.2.3-1+1"],["ok","\u003c 1.2.3-1-1+1-1-1"],["ok","\u003c 1.2.3-1a+1a"],["ok","\u003c 1.2.3-1a-1a+1a-1a-1a"],["ok","\u003c= 1.2.3-1a"],["ok","\u003c= 1.2.3+1a"],["ok","\u003c= 1.2.3-01a"],["ok","\u003c= 1.2.3+01"],["ok","\u003c= 1.2.3-1+1"],["ok","\u003c= 1.2.3-1-1+1-1-1"],["ok","\u003c= 1.2.3-1a+1a"],["ok","\u003c= 1.2.3-1a-1a+1a-1a-1a"],["ok","~ 1.2.3-1a"],["ok","~ 1.2.3+1a"],["ok","~ 1.2.3-01a"],["ok","~ 1.2.3+01"],["ok","~ 1.2.3-1+1"],["ok","~ 1.2.3-1-1+1-1-1"],["ok","~ 1.2.3-1a+1a"],["ok","~ 1.2.3-1a-1a+1a-1a-1a"],["ok","^ 1.2.3-1a"],["ok","^ 1.2.3+1a"],["ok","^ 1.2.3-01a"],["ok","^ 1.2.3+01"],["ok","^ 1.2.3-1+1"],["ok","^ 1.2.3-1-1+1-1-1"],["ok","^ 1.2.3-1a+1a"],["ok","^ 1.2.3-1a-1a+1a-1a-1a"]]},"composer":{"v":[["0.9.0","0.9.0.0","stable"],["1.0.0","1.0.0.0","stable"],["1.1.0","1.1.0.0","stable"],["1.2.0","1.2.0.0","stable"],["1.2.3","1.2.3.0","stable"],["1.2.4","1.2.4.0","stable"],["1.2.7","1.2.7.0","stable"],["1.2.9","1.2.9.0","stable"],["1.3.0","1.3.0.0","stable"],["1.4.9","1.4.9.0","stable"],["1.5.0","1.5.0.0","stable"],["1.9.0","1.9.0.0","stable"],["2.0.0","2.0.0.0","stable"],["2.0.1","2.0.1.0","stable"],["2.1.0","2.1.0.0","stable"],["3.0.0","3.0.0.0","stable"],["0.2.3","0.2.3.0","stable"],["0.2.9","0.2.9.0","stable"],["0.3.0","0.3.0.0","stable"],["1.2.3-beta.2","1.2.3.0-beta2","beta"],["1.2.3-beta.5","1.2.3.0-beta5","beta"],["1.2.4-rc.1","1.2.4.0-RC1","RC"],["1.3.0-rc.1","1.3.0.0-RC1","RC"],["1.3.0rc1","1.3.0.0-RC1","RC"],["1.5.0rc1","1.5.0.0-RC1","RC"],["1.3.0-RC1","1.3.0.0-RC1","RC"],["2.0.0-alpha","2.0.0.0-alpha","alpha"],["1.2.0-dev","1.2.0.0-dev","dev"],["1.2.0.dev1",null,"Invalid version string \"1.2.0.dev1\""],["1.2a1","1.2.0.0-alpha1","alpha"],["1.2","1.2.0.0","stable"],["1.9","1.9.0.0","stable"],["1","1.0.0.0","stable"],["v1.2.3","1.2.3.0","stable"],["1.2.3.4","1.2.3.4","stable"],["1!2.0",null,"Invalid version string \"1!2.0\""],["1.0.0+build.1","1.0.0.0","stable"],["1.2.3+abc","1.2.3.0","stable"],["1.0.post1",null,"Invalid version string \"1.0.post1\""],["1.2.post1",null,"Invalid version string \"1.2.post1\""],["1.2.0.post1",null,"Invalid version string \"1.2.0.post1\""],["01.2.3","01.2.3.0","stable"],["junk",null,"Invalid version string \"junk\""]],"r":[["~1.2",1,"[>= 1.2.0.0-dev \u003c 2.0.0.0-dev]","0001111111110000000111111101-111011-01---1-"],["1.2.3",1,"== 1.2.3.0","0000100000000000000000000000-000010-01---1-"],["1.2",1,"== 1.2.0.0","0001000000000000000000000000-010000-00---0-"],["=1.2",1,"== 1.2.0.0","0001000000000000000000000000-010000-00---0-"],["~>1.2",0,"Could not parse version constraint ~>1.2: Invalid operator \"~>\", you probably meant to use the \"~\" operator",""],["~=1.2",0,"Could not parse version constraint ~=1.2: Invalid version string \"~=1.2\"",""],["^1.2.3",1,"[>= 1.2.3.0-dev \u003c 2.0.0.0-dev]","0000111111110000000111111100-001011-01---1-"],["^0.2.3",1,"[>= 0.2.3.0-dev \u003c 0.3.0.0-dev]","0000000000000000110000000000-000000-00---0-"],[">=1.2",1,">= 1.2.0.0-dev","0001111111111111000111111111-111011-01---1-"],["^1.2.3-beta.2",1,"[>= 1.2.3.0-beta2 \u003c 2.0.0.0-dev]","0000111111110000000111111100-001011-01---1-"],[">=1.2, \u003c1.5",1,"[>= 1.2.0.0-dev \u003c 1.5.0.0-dev]","0001111111000000000111110101-110011-01---1-"],[">=1.2 \u003c1.5",1,"[>= 1.2.0.0-dev \u003c 1.5.0.0-dev]","0001111111000000000111110101-110011-01---1-"],[">=1.2 || \u003c1.0",1,"[>= 1.2.0.0-dev || \u003c 1.0.0.0-dev]","1001111111111111111111111111-111011-01---1-"],["1.2 - 2",1,"[>= 1.2.0.0-dev \u003c 3.0.0.0-dev]","0001111111111110000111111111-111011-01---1-"],["~1",1,"[>= 1.0.0.0-dev \u003c 2.0.0.0-dev]","0111111111110000000111111101-111111-11---1-"],["~=1",0,"Could not parse version constraint ~=1: Invalid version string \"~=1\"",""],["~> 1",0,"Could not parse version constraint ~> 1: Invalid version string \"~> 1\"",""],["1.*",1,"[>= 1.0.0.0-dev \u003c 2.0.0.0-dev]","0111111111110000000111111101-111111-11---1-"],["*",1,"*","1111111111111111111111111111-111111-11---1-"],["~1.2.3",1,"[>= 1.2.3.0-dev \u003c 1.3.0.0-dev]","0000111100000000000111000000-000011-01---1-"],["^0.3",1,"[>= 0.3.0.0-dev \u003c 0.4.0.0-dev]","0000000000000000001000000000-000000-00---0-"],["^0.0.3",1,"[>= 0.0.3.0-dev \u003c 0.0.4.0-dev]","0000000000000000000000000000-000000-00---0-"],["^0.2",1,"[>= 0.2.0.0-dev \u003c 0.3.0.0-dev]","0000000000000000110000000000-000000-00---0-"],["1.0 - 2.0",1,"[>= 1.0.0.0-dev \u003c 2.1.0.0-dev]","0111111111111100000111111111-111111-11---1-"],["1.0.0 - 2.1.0",1,"[>= 1.0.0.0-dev \u003c= 2.1.0.0]","0111111111111110000111111111-111111-11---1-"],[">=1.2-stable",1,">= 1.2.0.0","0001111111111111000111111110-011011-01---1-"],[">1.2",1,"> 1.2.0.0","0000111111111111000111111110-001011-01---1-"],["\u003c1.3",1,"\u003c 1.3.0.0-dev","1111111100000000111111000001-110111-11---1-"],["\u003c=1.3",1,"\u003c= 1.3.0.0","1111111110000000111111110101-110111-11---1-"],["1 - 2",1,"[>= 1.0.0.0-dev \u003c 3.0.0.0-dev]","0111111111111110000111111111-111111-11---1-"],["~1.3",1,"[>= 1.3.0.0-dev \u003c 2.0.0.0-dev]","0000000011110000000000111100-001000-00---0-"],["1.4.*",1,"[>= 1.4.0.0-dev \u003c 1.5.0.0-dev]","0000000001000000000000000000-000000-00---0-"],["1.0.*@beta",1,"[>= 1.0.0.0-dev \u003c 1.1.0.0-dev]","0100000000000000000000000000-000100-10---0-"],["@dev",1,"*","1111111111111111111111111111-111111-11---1-"],["^1.2.3@RC",1,"[>= 1.2.3.0-dev \u003c 2.0.0.0-dev]","0000111111110000000111111100-001011-01---1-"],[">=1.2,\u003c1.5",1,"[>= 1.2.0.0-dev \u003c 1.5.0.0-dev]","0001111111000000000111110101-110011-01---1-"],[">=1.2 | \u003c1.0",1,"[>= 1.2.0.0-dev || \u003c 1.0.0.0-dev]","1001111111111111111111111111-111011-01---1-"],["!=1.2",1,"!= 1.2.0.0","1110111111111111111111111111-101111-11---1-"],["\u003c>1.2",1,"!= 1.2.0.0","1110111111111111111111111111-101111-11---1-"],["dev-master",1,"== dev-master","0000000000000000000000000000-000000-00---0-"],["1.2.x-dev",1,"== 1.2.9999999.9999999-dev","0000000000000000000000000000-000000-00---0-"],["1.2.3.4",1,"== 1.2.3.4","0000000000000000000000000000-000001-00---0-"],["v1.2",1,"== 1.2.0.0","0001000000000000000000000000-010000-00---0-"],["1.2.3-beta.2",1,"== 1.2.3.0-beta2","0000000000000000000100000000-000000-00---0-"],[">=1.2,!=1.3",1,"[>= 1.2.0.0-dev != 1.3.0.0]","0001111101111111000111111111-111011-01---1-"],["^1.2.3 || ^2.0",1,"[>= 1.2.3.0-dev \u003c 3.0.0.0-dev]","0000111111111110000111111110-001011-01---1-"],["^1.2 || ^2.0",1,"[>= 1.2.0.0-dev \u003c 3.0.0.0-dev]","0001111111111110000111111111-111011-01---1-"],["foo",0,"Could not parse version constraint foo: Invalid version string \"foo\"",""],["1.2.3-RC1",1,"== 1.2.3.0-RC1","0000000000000000000000000000-000000-00---0-"],[">=1.2.0 \u003c1.3.0",1,"[>= 1.2.0.0-dev \u003c 1.3.0.0-dev]","0001111100000000000111000001-110011-01---1-"],["~1.2.3-beta.2",1,"[>= 1.2.3.0-beta2 \u003c 1.3.0.0-dev]","0000111100000000000111000000-000011-01---1-"],["2.0.x-dev",1,"== 2.0.9999999.9999999-dev","0000000000000000000000000000-000000-00---0-"],["~2.x-dev",1,"[>= 2.9999999.9999999.9999999-dev \u003c 3.0.0.0-dev]","0000000000000000000000000000-000000-00---0-"],["1.2.*",1,"[>= 1.2.0.0-dev \u003c 1.3.0.0-dev]","0001111100000000000111000001-110011-01---1-"],["^1.2.3-beta.2@beta",1,"[>= 1.2.3.0-beta2 \u003c 2.0.0.0-dev]","0000111111110000000111111100-001011-01---1-"],["1.2.3 as 1.2.4",1,"== 1.2.3.0","0000100000000000000000000000-000010-01---1-"],["1.2.3+build",1,"== 1.2.3.0","0000100000000000000000000000-000010-01---1-"],["2010-01-02",1,"== 2010.01.02","0000000000000000000000000000-000000-00---0-"],["1.0.0-alpha1.2",1,"== 1.0.0.0-alpha1.2","0000000000000000000000000000-000000-00---0-"],[">=1.2.3-p1",1,">= 1.2.3.0-patch1","0000011111111111000001111110-001001-00---0-"]],"vc":[["1.0.0-dev","1.0.0-alpha",-1],["1.0.0-alpha","1.0.0-a",0],["1.0.0-beta","1.0.0-RC1",-1],["1.0.0-RC1","1.0.0",-1],["1.0.0","1.0.0-pl1",-1],["1.0.0-patch1","1.0.0",1],["1.2.0.0-dev","1.2.0.0",-1],["1.10","1.9",1],["1.0","1.0.0",-1],["1.0.0-#","1.0.0-pl",-1],["1.0.0-foo","1.0.0-dev",-1],["1.0rc1","1.0RC1",0],["1.0-b2","1.0-beta1",1],["5.2.0.0-beta","5.2.0.0-beta1",-1],["1.0.0.0-RC2","1.0.0.0-RC10",-1],["","",0],["","1",-1],["1","",1],["1.0_1","1.0.1",0],["1.0+1","1.0.1",0],["1.0a","1.0.a",0],["#1","1",0]]},"pep":{"v":[["0.9.0","0.9.0"],["1.0.0","1.0.0"],["1.1.0","1.1.0"],["1.2.0","1.2.0"],["1.2.3","1.2.3"],["1.2.4","1.2.4"],["1.2.7","1.2.7"],["1.2.9","1.2.9"],["1.3.0","1.3.0"],["1.4.9","1.4.9"],["1.5.0","1.5.0"],["1.9.0","1.9.0"],["2.0.0","2.0.0"],["2.0.1","2.0.1"],["2.1.0","2.1.0"],["3.0.0","3.0.0"],["0.2.3","0.2.3"],["0.2.9","0.2.9"],["0.3.0","0.3.0"],["1.2.3-beta.2","1.2.3b2"],["1.2.3-beta.5","1.2.3b5"],["1.2.4-rc.1","1.2.4rc1"],["1.3.0-rc.1","1.3.0rc1"],["1.3.0rc1","1.3.0rc1"],["1.5.0rc1","1.5.0rc1"],["1.3.0-RC1","1.3.0rc1"],["2.0.0-alpha","2.0.0a0"],["1.2.0-dev","1.2.0.dev0"],["1.2.0.dev1","1.2.0.dev1"],["1.2a1","1.2a1"],["1.2","1.2"],["1.9","1.9"],["1","1"],["v1.2.3","1.2.3"],["1.2.3.4","1.2.3.4"],["1!2.0","1!2.0"],["1.0.0+build.1","1.0.0+build.1"],["1.2.3+abc","1.2.3+abc"],["1.0.post1","1.0.post1"],["1.2.post1","1.2.post1"],["1.2.0.post1","1.2.0.post1"],["01.2.3","1.2.3"],["junk",null]],"r":[["~1.2",0,"Invalid specifier: '~1.2'","",""],["1.2.3",0,"Invalid specifier: '1.2.3'","",""],["1.2",0,"Invalid specifier: '1.2'","",""],["=1.2",0,"Invalid specifier: '=1.2'","",""],["~>1.2",0,"Invalid specifier: '~>1.2'","",""],["~=1.2",1,"~=1.2","000111111111000000011111110000110110010111-","000111111111000000000000000000110110010111-"],["^1.2.3",0,"Invalid specifier: '^1.2.3'","",""],["^0.2.3",0,"Invalid specifier: '^0.2.3'","",""],[">=1.2",1,">=1.2","000111111111111100011111111000110111010111-","000111111111111100000000000000110111010111-"],["^1.2.3-beta.2",0,"Invalid specifier: '^1.2.3-beta.2'","",""],[">=1.2, \u003c1.5",1,"\u003c1.5,>=1.2","000111111100000000011111010000100110010111-","000111111100000000000000000000100110010111-"],[">=1.2 \u003c1.5",0,"Invalid specifier: '>=1.2 \u003c1.5'","",""],[">=1.2 || \u003c1.0",0,"Invalid specifier: '>=1.2 || \u003c1.0'","",""],["1.2 - 2",0,"Invalid specifier: '1.2 - 2'","",""],["~1",0,"Invalid specifier: '~1'","",""],["~=1",0,"Invalid specifier: '~=1'","",""],["~> 1",0,"Invalid specifier: '~> 1'","",""],["1.*",0,"Invalid specifier: '1.*'","",""],["==1.2.*",1,"==1.2.*","000111110000000000011100000111100110010111-","000111110000000000000000000000100110010111-"],["!=1.2.*",1,"!=1.2.*","111000001111111111100011111000011001101000-","111000001111111111100000000000011001101000-"],["==1.2.3",1,"==1.2.3","000010000000000000000000000000000100010001-","000010000000000000000000000000000100010001-"],["===1.2",1,"===1.2","000000000000000000000000000000100000000000-","000000000000000000000000000000100000000000-"],["===1.2.3",1,"===1.2.3","000010000000000000000000000000000000000000-","000010000000000000000000000000000000000000-"],[">1.2",1,">1.2","000011111111111100011111111000010111010001-","000011111111111100000000000000010111010001-"],["\u003c1.5",1,"\u003c1.5","111111111100000011111111010111101110111111-","111111111100000011100000000000101110111111-"],[">=1.2rc1",1,">=1.2rc1","000111111111111100011111111000110111010111-","000111111111111100011111111000110111010111-"],["~=1.4.5a4",1,"~=1.4.5a4","000000000100000000000000000000000000000000-","000000000100000000000000000000000000000000-"],["~=2.2.post3",1,"~=2.2.post3","000000000000000000000000000000000000000000-","000000000000000000000000000000000000000000-"],["==1!1.0",1,"==1!1.0","000000000000000000000000000000000000000000-","000000000000000000000000000000000000000000-"],[">=1.2,\u003c2",1,"\u003c2,>=1.2","000111111111000000011111110000110110010111-","000111111111000000000000000000110110010111-"],["~=1.2.0",1,"~=1.2.0","000111110000000000011100000000100110010111-","000111110000000000000000000000100110010111-"],["^1.2",0,"Invalid specifier: '^1.2'","",""],["~1.2",0,"Invalid specifier: '~1.2'","",""],[">=1.2,,\u003c2",1,"\u003c2,>=1.2","000111111111000000011111110000110110010111-","000111111111000000000000000000110110010111-"],["==v1.2",1,"==v1.2","000100000000000000000000000000100000000000-","000100000000000000000000000000100000000000-"],["==1.2+abc",1,"==1.2+abc","000000000000000000000000000000000000000000-","000000000000000000000000000000000000000000-"],["==1.2.3+abc",1,"==1.2.3+abc","000000000000000000000000000000000000010000-","000000000000000000000000000000000000010000-"],[">=1.2.0,\u003c1.3.0",1,"\u003c1.3.0,>=1.2.0","000111110000000000011100000000100110010111-","000111110000000000000000000000100110010111-"],[">1.2.post1",1,">1.2.post1","000011111111111100011111111000010111010001-","000011111111111100000000000000010111010001-"],["\u003c1.3.0rc1",1,"\u003c1.3.0rc1","111111110000000011111100000111101110111111-","111111110000000011111100000111101110111111-"],["!=1.2.3",1,"!=1.2.3","111101111111111111111111111111111011101110-","111101111111111111100000000000111011101110-"],["==1.*",1,"==1.*","011111111111000000011111110111111110111111-","011111111111000000000000000000111110111111-"],[">=1.2.0.dev0",1,">=1.2.0.dev0","000111111111111100011111111111110111010111-","000111111111111100011111111111110111010111-"],["\u003c=1.2",1,"\u003c=1.2","111100000000000011100000000111101000101000-","111100000000000011100000000000101000101000-"],["~=1.2.3",1,"~=1.2.3","000011110000000000000100000000000110010001-","000011110000000000000000000000000110010001-"],[">=1.2, \u003c1.5, !=1.3.*",1,"!=1.3.*,\u003c1.5,>=1.2","000111110100000000011100000000100110010111-","000111110100000000000000000000100110010111-"],["==1.2.3.4",1,"==1.2.3.4","000000000000000000000000000000000010000000-","000000000000000000000000000000000010000000-"],["1.2.3",0,"Invalid specifier: '1.2.3'","",""],["~= 1.2",1,"~=1.2","000111111111000000011111110000110110010111-","000111111111000000000000000000110110010111-"]],"f":[[">=1.2",["1.3.0rc1","1.2.0"],["1.2.0"],["1.3.0rc1","1.2.0"]],[">=1.2",["1.3.0rc1"],["1.3.0rc1"],["1.3.0rc1"]],[">=1.2",["1.3.0rc1","1.1.0"],["1.3.0rc1"],["1.3.0rc1"]],[">=1.2",["1.3.0rc1","1.2.0.post1"],["1.2.0.post1"],["1.3.0rc1","1.2.0.post1"]],[">=1.2rc1",["1.3.0rc1","1.2.0"],["1.3.0rc1","1.2.0"],["1.3.0rc1","1.2.0"]],["~=1.2",["1.9","2.0","1.5.0rc1"],["1.9"],["1.9","1.5.0rc1"]],["~=1.2",["1.5.0rc1","2.0"],["1.5.0rc1"],["1.5.0rc1"]],["\u003c1.5",["1.5.0rc1","1.4.9"],["1.4.9"],["1.4.9"]],["\u003c1.5",["1.5.0rc1"],[],[]],["==1.2.*",["1.2.0.dev1","1.2a1"],["1.2.0.dev1","1.2a1"],["1.2.0.dev1","1.2a1"]],["!=1.3",["1.3.0rc1","1.2.0"],["1.2.0"],["1.3.0rc1","1.2.0"]],[">=1.2,\u003c1.5",["1.3.0rc1","1.2.0","1.4.9"],["1.2.0","1.4.9"],["1.3.0rc1","1.2.0","1.4.9"]],[">1.2",["1.2.post1","1.2.0.post1","1.3"],["1.3"],["1.3"]],["==1.2",["1.2.3+abc","1.2+abc"],["1.2+abc"],["1.2+abc"]]]},"ruby":{"v":[["0.9.0","0.9.0"],["1.0.0","1.0.0"],["1.1.0","1.1.0"],["1.2.0","1.2.0"],["1.2.3","1.2.3"],["1.2.4","1.2.4"],["1.2.7","1.2.7"],["1.2.9","1.2.9"],["1.3.0","1.3.0"],["1.4.9","1.4.9"],["1.5.0","1.5.0"],["1.9.0","1.9.0"],["2.0.0","2.0.0"],["2.0.1","2.0.1"],["2.1.0","2.1.0"],["3.0.0","3.0.0"],["0.2.3","0.2.3"],["0.2.9","0.2.9"],["0.3.0","0.3.0"],["1.2.3-beta.2","1.2.3.pre.beta.2"],["1.2.3-beta.5","1.2.3.pre.beta.5"],["1.2.4-rc.1","1.2.4.pre.rc.1"],["1.3.0-rc.1","1.3.0.pre.rc.1"],["1.3.0rc1","1.3.0rc1"],["1.5.0rc1","1.5.0rc1"],["1.3.0-RC1","1.3.0.pre.RC1"],["2.0.0-alpha","2.0.0.pre.alpha"],["1.2.0-dev","1.2.0.pre.dev"],["1.2.0.dev1","1.2.0.dev1"],["1.2a1","1.2a1"],["1.2","1.2"],["1.9","1.9"],["1","1"],["v1.2.3",null],["1.2.3.4","1.2.3.4"],["1!2.0",null],["1.0.0+build.1",null],["1.2.3+abc",null],["1.0.post1","1.0.post1"],["1.2.post1","1.2.post1"],["1.2.0.post1","1.2.0.post1"],["01.2.3","01.2.3"],["junk",null]],"r":[["~1.2",0,"Illformed requirement [\"~1.2\"]","",""],["1.2.3",1,"= 1.2.3","000010000000000000000000000000000-0---0001-","000010000000000000000000000000000-0---0001-"],["1.2",1,"= 1.2","000100000000000000000000000000100-0---0000-","000100000000000000000000000000100-0---0000-"],["=1.2",1,"= 1.2","000100000000000000000000000000100-0---0000-","000100000000000000000000000000100-0---0000-"],["~>1.2",1,"~> 1.2","000111111111000000011111110000110-1---0001-","000111111111000000000000000000110-1---0001-"],["~=1.2",0,"Illformed requirement [\"~=1.2\"]","",""],["^1.2.3",0,"Illformed requirement [\"^1.2.3\"]","",""],["^0.2.3",0,"Illformed requirement [\"^0.2.3\"]","",""],[">=1.2",1,">= 1.2","000111111111111100011111111000110-1---0001-","000111111111111100000000000000110-1---0001-"],["^1.2.3-beta.2",0,"Illformed requirement [\"^1.2.3-beta.2\"]","",""],[">=1.2, \u003c1.5",1,">= 1.2, \u003c 1.5","000111111100000000011111110000100-1---0001-","000111111100000000000000000000100-1---0001-"],[">=1.2 \u003c1.5",0,"Illformed requirement [\">=1.2 \u003c1.5\"]","",""],[">=1.2 || \u003c1.0",0,"Illformed requirement [\">=1.2 || \u003c1.0\"]","",""],["1.2 - 2",0,"Illformed requirement [\"1.2 - 2\"]","",""],["~1",0,"Illformed requirement [\"~1\"]","",""],["~=1",0,"Illformed requirement [\"~=1\"]","",""],["~> 1",1,"~> 1","011111111111000000011111110111111-1---0111-","011111111111000000000000000000111-1---0001-"],["1.*",0,"Illformed requirement [\"1.*\"]","",""],["= 1.2",1,"= 1.2","000100000000000000000000000000100-0---0000-","000100000000000000000000000000100-0---0000-"],["!= 1.2",1,"!= 1.2","111011111111111111111111111111011-1---1111-","111011111111111111100000000000011-1---0001-"],["> 1.2",1,"> 1.2","000011111111111100011111111000010-1---0001-","000011111111111100000000000000010-1---0001-"],["\u003c 1.2",1,"\u003c 1.2","111000000000000011100000000111001-0---1110-","111000000000000011100000000000001-0---0000-"],[">= 1.2",1,">= 1.2","000111111111111100011111111000110-1---0001-","000111111111111100000000000000110-1---0001-"],["\u003c= 1.2",1,"\u003c= 1.2","111100000000000011100000000111101-0---1110-","111100000000000011100000000000101-0---0000-"],["~> 1.2.3",1,"~> 1.2.3","000011110000000000000100000000000-1---0001-","000011110000000000000000000000000-1---0001-"],["~> 1.2.a",1,"~> 1.2.a","000111111111000000011111110111110-1---0111-","000111111111000000011111110111110-1---0111-"],["~> 1.2.3, >= 1.2.4",1,"~> 1.2.3, >= 1.2.4","000001110000000000000000000000000-0---0000-","000001110000000000000000000000000-0---0000-"],["> 1.1, \u003c 1.3",1,"> 1.1, \u003c 1.3","000111110000000000011111010111100-1---0111-","000111110000000000000000000000100-1---0001-"],[">= 1.2, \u003c 1.5.a",1,">= 1.2, \u003c 1.5.a","000111111100000000011111010000100-1---0001-","000111111100000000011111010000100-1---0001-"],["~> 0.0.1",1,"~> 0.0.1","000000000000000000000000000000000-0---0000-","000000000000000000000000000000000-0---0000-"],["1.2.3.4",1,"= 1.2.3.4","000000000000000000000000000000000-1---0000-","000000000000000000000000000000000-1---0000-"],["~> 1.3.0-rc.1",1,"~> 1.3.0.pre.rc.1","000000001000000000000011000000000-0---0000-","000000001000000000000011000000000-0---0000-"],["~>1.2",1,"~> 1.2","000111111111000000011111110000110-1---0001-","000111111111000000000000000000110-1---0001-"],["=1.2",1,"= 1.2","000100000000000000000000000000100-0---0000-","000100000000000000000000000000100-0---0000-"],[">=1.2,\u003c1.5",1,">= 1.2, \u003c 1.5","000111111100000000011111110000100-1---0001-","000111111100000000000000000000100-1---0001-"],["^1.2",0,"Illformed requirement [\"^1.2\"]","",""],["~1.2",0,"Illformed requirement [\"~1.2\"]","",""],["1.2.x",1,"= 1.2.x","000000000000000000000000000000000-0---0000-","000000000000000000000000000000000-0---0000-"],["",0,"Illformed requirement [\"\"]","",""],[">= 1,",0,"Illformed requirement [\"\"]","",""],["~> 1.0, != 1.1",1,"~> 1.0, != 1.1","010111111111000000011111110111111-1---0111-","010111111111000000000000000000111-1---0001-"],[">= 0",1,">= 0","111111111111111111111111111111111-1---1111-","111111111111111111100000000000111-1---0001-"]],"up":[["parse","  1","=","1"],["parse","= 1","=","1"],["parse","> 1",">","1"],["parse","=\n1","=","1"],["parse","1.0","=","1"],["reqpre",["= 1"],false],["reqpre",["= 1.a"],true],["reqpre",["> 1.a","\u003c 2"],true],["sat",["!= 1.2"],"1.1",true],["sat",["!= 1.2"],"1.2",false],["sat",["!= 1.2"],"1.3",true],["sat",["1.2"],"1.1",false],["sat",["1.2"],"1.2",true],["sat",["1.2"],"1.3",false],["sat",["= 1.2"],"1.1",false],["sat",["= 1.2"],"1.2",true],["sat",["= 1.2"],"1.3",false],["sat",["> 1.2"],"1.1",false],["sat",["> 1.2"],"1.2",false],["sat",["> 1.2"],"1.3",true],["sat",[">= 1.2"],"1.1",false],["sat",[">= 1.2"],"1.2",true],["sat",[">= 1.2"],"1.3",true],["sat",["> 1.1","\u003c 1.3"],"1.1",false],["sat",["> 1.1","\u003c 1.3"],"1.2",true],["sat",["> 1.1","\u003c 1.3"],"1.3",false],["sat",["\u003c 1.2"],"1.1",true],["sat",["\u003c 1.2"],"1.2",false],["sat",["\u003c 1.2"],"1.3",false],["sat",["\u003c= 1.2"],"1.1",true],["sat",["\u003c= 1.2"],"1.2",true],["sat",["\u003c= 1.2"],"1.3",false],["sat",["~> 1.2"],"1.1",false],["sat",["~> 1.2"],"1.2",true],["sat",["~> 1.2"],"1.3",true],["sat",["~> 0.0.1"],"0.1.1",false],["sat",["~> 0.0.1"],"0.0.2",true],["sat",["~> 0.0.1"],"0.0.1",true],["sat",["= 0.2.33"],"0.2.33",true],["sat",["> 0.2.33"],"0.2.34",true],["sat",["= 1.0"],"1.0",true],["sat",["= 1.0"],"1.0.0",true],["sat",["= 1.0.0"],"1.0",true],["sat",["1.0"],"1.0",true],["sat",["> 1.8.0"],"1.8.2",true],["sat",["> 1.111"],"1.112",true],["sat",["> 0.0.0"],"0.2",true],["sat",["> 0.0.0"],"0.0.0.0.0.2",true],["sat",["> 0.0.0.1"],"0.0.1.0",true],["sat",["> 9.3.2"],"10.3.2",true],["sat",["= 1.0"],"1.0.0.0",true],["sat",["!= 9.3.4"],"10.3.2",true],["sat",["> 9.3.2"],"10.3.2",true],["sat",[">= 9.3.2"]," 9.3.2",true],["sat",[">= 9.3.2"],"9.3.2 ",true],["sat",["= 0"],"",true],["sat",["\u003c 0.1"],"",true],["sat",["\u003c 0.1 "],"  ",true],["sat",[" \u003c  0.1"],"",true],["sat",["> 0.a "],"  ",true],["sat",[" >  0.a"],"",true],["sat",["\u003c 3.2.rc1"],"3.1",true],["sat",["> 3.2.0.rc1"],"3.2.0",true],["sat",["> 3.2.0.rc1"],"3.2.0.rc2",true],["sat",["\u003c 3.0"],"3.0.rc2",true],["sat",["\u003c 3.0.0"],"3.0.rc2",true],["sat",["\u003c 3.0.1"],"3.0.rc2",true],["sat",["> 0"],"3.0.rc2",true],["sat",["~> 5.a"],"5.0.0.rc2",true],["sat",["~> 5.x"],"5.0.0.rc2",false],["sat",["~> 5.a"],"5.0.0",true],["sat",["~> 5.x"],"5.0.0",true],["sat",["~> 1.4"],"1.3",false],["sat",["~> 1.4"],"1.4",true],["sat",["~> 1.4"],"1.5",true],["sat",["~> 1.4"],"2.0",false],["sat",["~> 1.4.4"],"1.3",false],["sat",["~> 1.4.4"],"1.4",false],["sat",["~> 1.4.4"],"1.4.4",true],["sat",["~> 1.4.4"],"1.4.5",true],["sat",["~> 1.4.4"],"1.5",false],["sat",["~> 1.4.4"],"2.0",false],["sat",["~> 1.0.0"],"1.1.pre",false],["sat",["~> 1.1"],"1.1.pre",false],["sat",["~> 1.0"],"2.0.a",false],["sat",["~> 2.0"],"2.0.a",false],["sat",["~> 1"],"0.9",false],["sat",["~> 1"],"1.0",true],["sat",["~> 1"],"1.1",true],["sat",["~> 1"],"2.0",false],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"1.3",false],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"1.4",true],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"1.5",false],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"1.6",true],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"1.7",false],["sat",[">= 1.4","\u003c= 1.6","!= 1.5"],"2.0",false],["sat",["~> 1.4"],"1.3",false],["sat",["~> 1.4"],"1.4",true],["sat",["~> 1.4"],"1.4.0",true],["sat",["~> 1.4"],"1.5",true],["sat",["~> 1.4"],"2.0",false],["sat",["~> 1.4.4"],"1.3",false],["sat",["~> 1.4.4"],"1.4",false],["sat",["~> 1.4.4"],"1.4.4",true],["sat",["~> 1.4.4"],"1.4.5",true],["sat",["~> 1.4.4"],"1.5",false],["sat",["~> 1.4.4"],"2.0",false],["sat",[">= 1.4.4","\u003c 1.5"],"1.4.5",true],["sat",[">= 1.4.4","\u003c 1.5"],"1.5.0.rc1",true],["sat",[">= 1.4.4","\u003c 1.5"],"1.5.0",false],["sat",[">= 1.4.4","\u003c 1.5.a"],"1.4.5",true],["sat",[">= 1.4.4","\u003c 1.5.a"],"1.5.0.rc1",false],["sat",[">= 1.4.4","\u003c 1.5.a"],"1.5.0",false],["sat",["> 0.1"],"",false],["sat",["!= 1.2.3"],"1.2.3",false],["sat",["!= 1.02.3"],"1.2.003.0.0",false],["sat",["\u003c 1.2.3"],"4.5.6",false],["sat",["> 1.1"],"1.0",false],["sat",["= 0.1"],"",false],["sat",["> 1.1.1"],"1.1.1",false],["sat",["= 1.1"],"1.2",false],["sat",["= 1.1"],"1.40",false],["sat",["= 1.40"],"1.3",false],["sat",["\u003c= 9.3.2"],"9.3.3",false],["sat",[">= 9.3.2"],"9.3.1",false],["sat",["\u003c= 9.3.2"],"9.3.03",false],["sat",["= 1.0"],"1.0.0.1",false],["badreq",""],["badreq","! 1"],["badreq","= junk"],["badreq","1..2"],["badreq",">>> 1.3.5"],["badreq","> blah"],["bump","5.2.4","5.3"],["bump","5.2.4.a","5.3"],["bump","5.2.4.a10","5.3"],["bump","5.0.0","5.1"],["bump","5","6"],["release","1.2.0.a","1.2.0"],["release","1.1.rc10","1.1"],["release","1.9.3.alpha.5","1.9.3"],["release","1.9.3","1.9.3"],["pre","1.2.0.a",true],["pre","2.9.b",true],["pre","22.1.50.0.d",true],["pre","1.2.d.42",true],["pre","1.A",true],["pre","1-1",true],["pre","1-a",true],["pre","1.2.0",false],["pre","2.9",false],["pre","22.1.50.0",false],["cmp","1.2","1.2",0],["cmp","1.2","1.3","ne"],["cmp","1.2.b1","1.2.b.1",0],["cmp","9.8.8","9.8.7","ne"],["cmp","1.0.0-alpha","1.0.0-alpha.1",-1],["cmp","1.0.0-alpha.1","1.0.0-beta.2",-1],["cmp","1.0.0-beta.2","1.0.0-beta.11",-1],["cmp","1.0.0-beta.11","1.0.0-rc.1",-1],["cmp","1.0.0-rc1","1.0.0",-1],["cmp","1.0.0-1","1",-1],["cmp","1.0","1.0.0",0],["cmp","1.0","1.0.a",1],["cmp","1.8.2","0.0.0",1],["cmp","1.8.2","1.8.2.a",1],["cmp","1.8.2.b","1.8.2.a",1],["cmp","1.8.2.a","1.8.2",-1],["cmp","1.8.2.a10","1.8.2.a9",1],["cmp","","0",0],["cmp","0.beta.1","0.0.beta.1",0],["cmp","0.0.beta","0.0.beta.1",-1],["cmp","0.0.beta","0.beta.1",-1],["cmp","5.a","5.0.0.rc2",-1],["cmp","5.x","5.0.0.rc2",1],["cmp","1.9.3","1.9.3",0],["cmp","1.9.3","1.9.2.99",1],["cmp","1.9.3","1.9.3.1",-1],["correct","5.1",true],["correct","an incorrect version",false],["canon","1.0.0",[1]],["canon","1.0.0.a.1.0",[1,"a",1]],["canon","1.2.3-1",[1,2,3,"pre",1]],["badver","junk"],["badver","1.0\n2.0"],["badver","1..2"],["badver","1.2 3.4"],["badver","2.3422222.222.222222222.22222.ads0as.dasd0.ddd2222.2.qd3e."],["cmp","1.0","1.0",0],["cmp","1.0","1.0 ",0],["cmp","1.0"," 1.0 ",0],["cmp","1.0","1.0\n",0],["cmp","1.0","\n1.0\n",0],["cmp","1.0","1.0",0],["ver","","0"],["ver","   ","0"],["ver"," ","0"]]}};
+</script>
+<script>
+/* APP-BEGIN */
+var VRTAPP = (function () {
+  'use strict';
+  var E = VRT;
+  var MAX_RANGE = 512, MAX_LINES = 100, MAX_LINE = 256;
+
+  // ------------------------------------------------------------ helpers
+  function num(x) { return typeof x === 'bigint' ? Number(x) : x; }
+  function relOf(str) { return str.split('.').map(function (x) { return Number(x); }); }
+
+  // ------------------------------------------------------------ adapters
+  // read(text) -> {ok, err, hint, native, groups:[[ [op, ver], ...], ...], notes:[]}
+  // ver(text) -> {ok, norm, pre, why}
+  // match(parsed, v) -> boolean ; admit(parsed, v, ctx) -> {ok, why}
+  // bound(verText) -> {rel:[], pre:string|null} | null
+  var npm = {
+    id: 'npm', name: 'npm', impl: 'node-semver 7.8.5',
+    read: function (t) {
+      var R;
+      try { R = new E.NPM.Range(t); } catch (e) {
+        var h = t.indexOf(',') !== -1 ? 'npm does not accept commas. Comparators are separated by spaces.' :
+          /(^|\s)(!=|<>)/.test(t) ? 'npm has no != operator.' : 'npm could not read this range.';
+        return { ok: false, err: e.message, hint: h };
+      }
+      var groups = R.sets.map(function (s) { return s.map(function (c) { return c.ver.any ? ['*', ''] : [c.op || '=', c.ver.version]; }); });
+      var notes = [];
+      if (/(^|[\s|])~\s*[>=]/.test(t)) notes.push("npm reads ~> and ~= as its own tilde (~). This column is npm's tilde reading.");
+      if (/-0(\s|\||$)/.test(R.range)) notes.push('The -0 on an upper bound also shuts out every pre-release of that version.');
+      return { ok: true, native: R.range || '(empty: any version)', groups: groups, notes: notes, R: R };
+    },
+    ver: function (t) {
+      try { var v = new E.NPM.Ver(t); return { ok: true, norm: v.version, pre: v.pre.length > 0, v: v }; }
+      catch (e) { return { ok: false, why: semverWhy(t, true) }; }
+    },
+    match: function (p, vv) { return p.R.test(vv.v); },
+    admit: function (p, vv, ctx, m) { return { ok: m, why: m ? 'installs what the range matches' : 'not matched' }; },
+    bound: semverBound,
+    emit: function (lo, hi) { return [lo && (lo.incl ? '>=' : '>') + lo.text, hi && (hi.incl ? '<=' : '<') + hi.text].filter(Boolean).join(' '); },
+    relRule: 3
+  };
+  function semverWhy(t, allowV) {
+    var s = t.trim();
+    if (/^v/i.test(s) && !allowV) return 'no leading v is accepted';
+    var body = s.replace(/^v/i, '').split(/[-+]/)[0];
+    if (/^\d+(\.\d+)?$/.test(body)) return 'SemVer needs three numbers (major.minor.patch)';
+    if (/^\d+(\.\d+){3,}$/.test(body)) return 'SemVer has exactly three numbers';
+    if (/(^|\.)0\d/.test(body)) return 'leading zeros are refused';
+    return 'not a SemVer version';
+  }
+  function semverBound(text) {
+    var m = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(text);
+    if (!m) return null;
+    return { rel: [Number(m[1]), Number(m[2]), Number(m[3])], pre: m[4] || null };
+  }
+
+  var cargo = {
+    id: 'cargo', name: 'Cargo', impl: 'semver crate 1.0.28',
+    read: function (t) {
+      var R;
+      try { R = new E.CARGO.Req(t); } catch (e) {
+        var msg = e.message, h = 'Cargo could not read this requirement.';
+        if (t.indexOf('||') !== -1) h = 'Cargo has no OR operator (||).';
+        else if (/~\s*[>=]/.test(t)) h = 'Cargo has no ~> or ~= operator.';
+        else if (/^\s*[<>=~^]*\s*v/i.test(t)) h = 'Cargo does not accept a leading v.';
+        else if (/expected comma after .*, found '-'/.test(msg) && / - /.test(t)) h = 'Cargo has no hyphen ranges.';
+        else if (/^expected comma after patch version number, found '.'/.test(msg)) h = 'Cargo versions have exactly three numbers.';
+        else if (/^expected comma after/.test(msg)) h = 'Cargo requires commas between comparators.';
+        else if (/leading zero/.test(msg)) h = 'Cargo refuses leading zeros.';
+        else if (/^wildcard req/.test(msg)) h = 'In Cargo a wildcard must be the only comparator.';
+        else if (/excessive/.test(msg)) h = 'Cargo allows at most 32 comparators.';
+        else if (/!=/.test(t)) h = 'Cargo has no != operator.';
+        return { ok: false, err: msg, hint: h };
+      }
+      var plain = [];
+      R.comps.forEach(function (c) { E.CARGO.plain(c).forEach(function (x) { plain.push([x[0], String(x[1])]); }); });
+      if (!plain.length) plain = [['*', '']];
+      var notes = [];
+      if (R.comps.some(function (c, i) { return c.op === 'Caret' && i === 0 && !/^\s*\^/.test(t); })) notes.push('A bare version is a caret requirement in Cargo.');
+      return { ok: true, native: R.toString(), groups: [plain], notes: notes, R: R };
+    },
+    ver: function (t) {
+      try { var v = new E.CARGO.Ver(t); return { ok: true, norm: v.toString(), pre: !!v.pre, v: v }; }
+      catch (e) { return { ok: false, why: semverWhy(t, false) }; }
+    },
+    match: function (p, vv) { return p.R.matches(vv.v); },
+    admit: function (p, vv, ctx, m) { return { ok: m, why: m ? 'Cargo resolves with the same rule' : 'not matched' }; },
+    bound: semverBound,
+    emit: function (lo, hi) { return [lo && (lo.incl ? '>=' : '>') + lo.text, hi && (hi.incl ? '<=' : '<') + hi.text].filter(Boolean).join(', '); },
+    relRule: 3
+  };
+
+  var STAB_RANK = { dev: 0, alpha: 1, beta: 2, rc: 3, stable: 4 };
+  var composer = {
+    id: 'composer', name: 'Composer', impl: 'composer/semver 3.5.0',
+    read: function (t) {
+      var P;
+      try { P = E.COMPOSER.parseConstraints(t); } catch (e) {
+        var h = /~>/.test(t) ? 'Composer has no ~> operator. Its own message suggests ~.' : /~=/.test(t) ? 'Composer has no ~= operator.' : 'Composer could not read this constraint.';
+        return { ok: false, err: e.message, hint: h };
+      }
+      var groups = toGroups(P.tree);
+      var notes = [];
+      P.flags.forEach(function (f) { notes.push('Stability flag @' + f + ' applies.'); });
+      P.root = E.COMPOSER.rootFlags(t);
+      if (P.root.inferred) notes.push('As a root requirement, Composer infers @' + P.root.inferred + ' from this constraint, so matching versions at ' + P.root.inferred + ' stability or above install.');
+      if (/^\s*v?\d+(\.\d+){0,3}\s*$/.test(t)) notes.push('A bare version is an exact match in Composer.');
+      return { ok: true, native: E.COMPOSER.str(P.tree), groups: groups, notes: notes, P: P };
+    },
+    ver: function (t) {
+      try { var n = E.COMPOSER.normalize(t); return { ok: true, norm: n, pre: E.COMPOSER.parseStability(t) !== 'stable', stab: E.COMPOSER.parseStability(t) }; }
+      catch (e) { return { ok: false, why: 'not a version Composer can normalize' }; }
+    },
+    match: function (p, vv) { return E.COMPOSER.match(p.P.tree, vv.norm); },
+    admit: function (p, vv, ctx, m) {
+      if (!m) return { ok: false, why: 'not matched' };
+      if (vv.stab === 'stable') return { ok: true, why: 'stable release' };
+      var need = STAB_RANK[vv.stab.toLowerCase()];
+      var flag = p.P.flags.filter(function (f) { return STAB_RANK[f.toLowerCase()] <= need; })[0];
+      if (flag) return { ok: true, why: 'allowed by the @' + flag + ' stability flag' };
+      var inf = p.P.root && p.P.root.inferred;
+      if (inf && STAB_RANK[inf.toLowerCase()] <= need) return { ok: true, why: 'allowed: Composer infers @' + inf + ' from the constraint itself (root requirement)' };
+      if (inf) return { ok: false, why: 'held back: stability ' + vv.stab + ' is below the default minimum-stability (stable) and below the inferred @' + inf };
+      return { ok: false, why: 'held back: stability ' + vv.stab + ' is below the default minimum-stability (stable)' };
+    },
+    bound: function (text) {
+      if (/^dev-/.test(text)) return null;
+      var m = /^(\d+(?:\.\d+)*)(?:-(.+))?$/.exec(text);
+      if (!m) return null;
+      return { rel: relOf(m[1]), pre: m[2] || null };
+    },
+    emit: function (lo, hi) { return [lo && (lo.incl ? '>=' : '>') + lo.text, hi && (hi.incl ? '<=' : '<') + hi.text].filter(Boolean).join(' '); },
+    relRule: 4
+  };
+  function toGroups(t) {
+    if (t.all) return [[['*', '']]];
+    if (t.or) return t.or.map(function (x) { return toGroups(x)[0]; });
+    if (t.and) return [t.and.map(function (c) { return c.all ? ['*', ''] : [c.op, c.version]; })];
+    return [[[t.op, t.version]]];
+  }
+
+  var pep = {
+    id: 'pep', name: 'PEP 440', impl: 'pypa/packaging 26.3',
+    read: function (t) {
+      var S;
+      try { S = new E.PEP.SpecSet(t); } catch (e) { return { ok: false, err: e.message, hint: pepHint(t) }; }
+      var plain = [], notes = [];
+      S.specs.forEach(function (s) {
+        if (s.op === '~=') { plain.push(['>=', s.v]); plain.push(['==', E.PEP.compatPrefix(s.v)]); }
+        else plain.push([s.op, s.v]);
+      });
+      if (!plain.length) plain = [['*', '']];
+      if (S.specs.some(function (s) { return s.op === '~='; })) notes.push('~=V means >=V together with ==prefix.* (the compatible release clause).');
+      if (S.specs.some(function (s) { return s.op === '==='; })) notes.push('=== is plain string equality, with no version semantics.');
+      return { ok: true, native: S.toString() || '(empty: any version)', groups: [plain], notes: notes, S: S };
+    },
+    ver: function (t) {
+      var v = E.PEP.tryVer(t);
+      return v ? { ok: true, norm: v.toString(), pre: v.isPre(), v: v } : { ok: false, why: 'not a PEP 440 version' };
+    },
+    match: function (p, vv, t) { return p.S.allMatch(t); },
+    admit: function (p, vv, ctx, m, t) {
+      if (!m) return { ok: false, why: 'not matched' };
+      var kept = ctx.pepKept;
+      var ok = kept.indexOf(t) !== -1;
+      if (!vv.pre) return { ok: ok, why: ok ? (vv.v.isPost() ? 'post-release, counts as final' : 'final release') : 'not kept' };
+      if (ok) {
+        if (ctx.pepPre) return { ok: true, why: '--pre is on' };
+        if (p.S.prereleases() === true) return { ok: true, why: 'a specifier names a pre-release' };
+        return { ok: true, why: 'no final or post release in your list matches, so pre-releases are kept' };
+      }
+      return { ok: false, why: 'held back: a final or post release in your list also matches' };
+    },
+    bound: function (text) {
+      var v = E.PEP.tryVer(text);
+      if (!v || v.epoch !== 0n || v.local) return null;
+      var rel = v.release.map(num), s = v.toString(), r = v.release.join('.');
+      var rest = s.slice(r.length);
+      return { rel: rel, pre: rest ? rest.replace(/^\./, '') : null };
+    },
+    emit: function (lo, hi) { return [lo && (lo.incl ? '>=' : '>') + lo.text, hi && (hi.incl ? '<=' : '<') + hi.text].filter(Boolean).join(', '); },
+    relRule: 0
+  };
+  function pepHint(t) {
+    var parts = t.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (t.indexOf('||') !== -1) return 'PEP 440 has no OR operator.';
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (/^[*xX](.[*xX])*$/.test(p)) return 'PEP 440 has no bare wildcard. Prefix matching such as ==1.* needs an operator.';
+      if (/^~>/.test(p) || /^\^/.test(p) || /^~(?!=)/.test(p)) return 'PEP 440 has no ^, ~ or ~> operator. The nearest is ~= (compatible release).';
+      if (/^~=\s*v?(\d+!)?\d+([^.\d]|$)/.test(p)) return '~= needs at least two release segments. PEP 440 says it MUST NOT be used with a single segment version.';
+      if (/^v?\d/.test(p)) return 'PEP 440 needs an operator such as == or >=. A bare version is not a specifier.';
+      if (/^=(?!=)/.test(p)) return 'PEP 440 writes equality as ==, not =.';
+      if (/\s-\s/.test(p)) return 'PEP 440 has no hyphen ranges.';
+      if (/\S\s+[<>=!~]/.test(p)) return 'PEP 440 separates clauses with commas, not spaces.';
+      if (/[*xX]$/.test(p) && !/^[=!]=/.test(p)) return 'Prefix matching (.*) works only with == and !=.';
+    }
+    return 'Not a valid PEP 440 specifier.';
+  }
+
+  var ruby = {
+    id: 'ruby', name: 'RubyGems', impl: 'RubyGems v4.0.22',
+    read: function (t) {
+      var Q;
+      try { Q = new E.RUBY.Req(t.split(',')); } catch (e) {
+        var h = 'RubyGems could not read this requirement.';
+        if (t.indexOf('||') !== -1) h = 'RubyGems has no OR operator.';
+        else if (/\^/.test(t)) h = 'RubyGems has no ^ operator.';
+        else if (/~=/.test(t)) h = 'RubyGems has no ~= operator. Its pessimistic operator is ~>.';
+        else if (/~(?!>)/.test(t)) h = 'RubyGems has no ~ operator. Its pessimistic operator is ~>.';
+        else if (/[*xX](\s|,|$)/.test(t)) h = 'RubyGems has no wildcards.';
+        else if (/\s-\s/.test(t)) h = 'RubyGems has no hyphen ranges.';
+        else if (/(^|,)\s*(,|$)/.test(t)) h = 'An empty requirement string between commas is ill-formed.';
+        else if (/\d\s+[<>=!~]/.test(t)) h = 'RubyGems takes one comparator per string. Separate them with commas here.';
+        return { ok: false, err: e.message, hint: h };
+      }
+      var plain = [], notes = [];
+      Q.reqs.forEach(function (r) {
+        if (r[0] === '~>') { plain.push(['>=', r[1].version]); plain.push(['<', r[1].bump().version]); }
+        else plain.push([r[0], r[1].version]);
+      });
+      if (t.indexOf(',') !== -1) notes.push('Split on commas into separate requirement strings, the way a Gemfile or gemspec passes them.');
+      if (Q.reqs.some(function (r) { return r[0] === '~>'; })) notes.push('~> V means >= V and below V.bump (Gem::Version#bump).');
+      if (/^\s*v?\d/.test(t) && Q.reqs.length === 1 && Q.reqs[0][0] === '=') notes.push('A bare version is an exact match in RubyGems.');
+      return { ok: true, native: Q.toString(), groups: [plain], notes: notes, Q: Q };
+    },
+    ver: function (t) {
+      try { var v = new E.RUBY.Ver(t); return { ok: true, norm: v.version, pre: v.isPre(), v: v }; }
+      catch (e) {
+        var w = /^\s*v/i.test(t) ? 'no leading v is accepted' : /\+/.test(t) ? 'no +build metadata is accepted' : 'malformed version number string';
+        return { ok: false, why: w };
+      }
+    },
+    match: function (p, vv) { return p.Q.satisfiedBy(vv.v); },
+    admit: function (p, vv) {
+      var ok = p.Q.depMatch(vv.v);
+      if (vv.pre && !p.Q.isPre()) return { ok: false, why: 'held back: Gem::Dependency#match? skips pre-releases unless the requirement names one' };
+      return { ok: ok, why: ok ? 'Gem::Dependency#match? accepts it' : 'not matched' };
+    },
+    bound: function (text) {
+      var segs = new E.RUBY.Ver(text).segments(), rel = [], i = 0;
+      while (i < segs.length && typeof segs[i] === 'bigint') { rel.push(num(segs[i])); i++; }
+      if (!rel.length) return null;
+      return { rel: rel, pre: i < segs.length ? segs.slice(i).map(String).join('.') : null };
+    },
+    emit: function (lo, hi) { return [lo && (lo.incl ? '>= ' : '> ') + lo.text, hi && (hi.incl ? '<= ' : '< ') + hi.text].filter(Boolean).join(', '); },
+    relRule: 0
+  };
+
+  var ECOS = [npm, cargo, composer, pep, ruby];
+  var BY = {}; ECOS.forEach(function (e) { BY[e.id] = e; });
+
+  // ------------------------------------------------------------ evaluation
+  function evaluate(rangeText, lines, pepPre) {
+    var out = { ecos: [] };
+    ECOS.forEach(function (eco) {
+      var p = eco.read(rangeText), rows = [];
+      var ctx = { pepPre: pepPre, pepKept: [] };
+      if (p.ok && eco.id === 'pep') ctx.pepKept = p.S.filter(lines, pepPre ? true : null);
+      lines.forEach(function (t) {
+        var vv = eco.ver(t), r = { t: t, vv: vv };
+        if (p.ok && vv.ok) {
+          r.m = eco.match(p, vv, t);
+          r.a = eco.admit(p, vv, ctx, r.m, t);
+        }
+        rows.push(r);
+      });
+      out.ecos.push({ eco: eco, p: p, rows: rows });
+    });
+    return out;
+  }
+  function outcome(r) { return !r.vv.ok ? 'not a version' : r.m ? 'matches' : 'no match'; }
+  function admitWord(r) { return r.a ? (r.a.ok ? 'admitted' : 'held back') : ''; }
+
+  // ------------------------------------------------------------ interval + translation
+  function cmpBound(a, b) {
+    var n = Math.max(a.rel.length, b.rel.length);
+    for (var i = 0; i < n; i++) { var x = a.rel[i] || 0, y = b.rel[i] || 0; if (x !== y) return x < y ? -1 : 1; }
+    if (a.pre === b.pre) return 0;
+    if (a.pre === null) return 1;
+    if (b.pre === null) return -1;
+    return a.pre < b.pre ? -1 : 1;
+  }
+  function interval(eco, p) {
+    if (!p.ok) return { why: 'the source refuses this range' };
+    if (p.groups.length !== 1) return { why: 'the source reading is a union (OR), which is not one interval' };
+    var lo = null, hi = null, notes = [];
+    function setLo(b) { if (!lo || cmpBound(b, lo) > 0 || (cmpBound(b, lo) === 0 && !b.incl)) lo = b; }
+    function setHi(b) { if (!hi || cmpBound(b, hi) < 0 || (cmpBound(b, hi) === 0 && !b.incl)) hi = b; }
+    var g = p.groups[0];
+    for (var i = 0; i < g.length; i++) {
+      var op = g[i][0], v = g[i][1];
+      if (op === '*') continue;
+      if (op === '!=' || op === '<>') return { why: 'it contains != , which is not one interval' };
+      if (op === '===') return { why: 'it contains PEP 440 ===, which is string equality' };
+      if (eco.id === 'pep' && op === '==' && /\.\*$/.test(v)) {
+        var w = E.PEP.tryVer(v.slice(0, -2));
+        if (!w || w.epoch !== 0n) return { why: 'the prefix match ' + v + ' has no plain bound here' };
+        var r = w.release.map(num), up = r.slice(); up[up.length - 1] += 1;
+        setLo({ rel: r, pre: null, incl: true }); setHi({ rel: up, pre: null, incl: false });
+        notes.push('==' + v + ' was read as >=' + r.join('.') + ', <' + up.join('.') + '.');
+        continue;
+      }
+      var b = eco.bound(v);
+      if (!b) return { why: 'the bound ' + v + ' has no plain numeric form' };
+      if ((eco.id === 'npm' || eco.id === 'cargo') && op === '<' && b.pre === '0') { b.pre = null; notes.push('npm\'s -0 marker on <' + v + ' was dropped; the plain form is <' + b.rel.join('.') + '.'); }
+      if (eco.id === 'composer' && b.pre === 'dev') { b.pre = null; notes.push('Composer\'s internal -dev marker on ' + v + ' was dropped.'); }
+      if (op === '>=' ) setLo({ rel: b.rel, pre: b.pre, incl: true });
+      else if (op === '>') setLo({ rel: b.rel, pre: b.pre, incl: false });
+      else if (op === '<=') setHi({ rel: b.rel, pre: b.pre, incl: true });
+      else if (op === '<') setHi({ rel: b.rel, pre: b.pre, incl: false });
+      else if (op === '=' || op === '==') { setLo({ rel: b.rel, pre: b.pre, incl: true }); setHi({ rel: b.rel, pre: b.pre, incl: true }); }
+      else return { why: 'operator ' + op + ' has no interval form' };
+    }
+    if (!lo && !hi) return { why: 'it matches every version, so there is no bound to translate' };
+    return { lo: lo, hi: hi, notes: notes };
+  }
+  function boundText(target, b) {
+    var r = b.rel.slice();
+    while (r.length > 3 && r[r.length - 1] === 0) r.pop();
+    if (target.relRule === 3) {
+      if (r.length > 3) return { err: 'the bound ' + b.rel.join('.') + ' has more than three numbers, and SemVer has three' };
+      while (r.length < 3) r.push(0);
+    } else if (target.relRule === 4 && r.length > 4) return { err: 'the bound ' + b.rel.join('.') + ' has more than four numbers' };
+    var s = r.join('.');
+    if (b.pre) s += (target.id === 'ruby' ? '.' : target.id === 'pep' ? '' : '-') + b.pre;
+    return { text: s };
+  }
+  function translate(srcId, res, lines) {
+    var src = res.ecos.filter(function (x) { return x.eco.id === srcId; })[0];
+    var iv = interval(src.eco, src.p);
+    if (iv.why) return { refused: 'Translation is not offered for ' + src.eco.name + ' here: ' + iv.why + '.' };
+    var outs = ECOS.map(function (tg) {
+      var lo = null, hi = null, e;
+      if (iv.lo) { e = boundText(tg, iv.lo); if (e.err) return { eco: tg, err: e.err }; lo = { incl: iv.lo.incl, text: e.text }; }
+      if (iv.hi) { e = boundText(tg, iv.hi); if (e.err) return { eco: tg, err: e.err }; hi = { incl: iv.hi.incl, text: e.text }; }
+      var str = tg.emit(lo, hi), p = tg.read(str);
+      if (!p.ok) return { eco: tg, str: str, refusedHere: p.hint + ' (' + p.err + ')' };
+      var agree = 0, dis = [];
+      var ctx = { pepPre: false, pepKept: [] };
+      lines.forEach(function (t, i) {
+        var a = outcome(src.rows[i]);
+        var vv = tg.ver(t), b = !vv.ok ? 'not a version' : tg.match(p, vv, t) ? 'matches' : 'no match';
+        if (a === b) agree++; else dis.push({ t: t, a: a, b: b });
+      });
+      return { eco: tg, str: str, agree: agree, total: lines.length, dis: dis };
+    });
+    return { notes: iv.notes, outs: outs, src: src };
+  }
+
+  // ------------------------------------------------------------ self test
+  var COMPOSER_ROOT_FLAGS = [
+    ['^1.2.3-beta.2', 'inferred', 'beta'], ['>=1.2-beta', 'inferred', 'beta'], ['1.3.0-RC1', 'inferred', 'RC'],
+    ['>=1.2-beta <2', 'inferred', 'beta'], ['>=1.2-beta,<2', 'inferred', 'beta'], ['1.0-beta - 2.0', 'inferred', null],
+    ['~1.2', 'inferred', null], ['^1.2', 'inferred', null], ['>=1.0-alpha || ^1.2-RC1', 'inferred', 'alpha'],
+    ['>=1.0-RC1 >=1.0-alpha', 'inferred', 'alpha'], ['1.2.*@beta', 'explicit', 'beta'], ['>=1.0-alpha@beta', 'explicit', 'beta'],
+    ['1.0.x-dev', 'inferred', 'dev'], ['dev-master', 'inferred', 'dev'], ['1.0-beta as 1.0', 'inferred', 'beta'],
+    ['2.0.0-alpha', 'inferred', 'alpha'], ['*', 'inferred', null], ['>=1.2.0.dev1', 'inferred', null], ['1.3.0rc1', 'inferred', 'RC']
+  ];
+  function selfTest() {
+    var V = VECTORS, pass = 0, fails = [];
+    function eq(eng, what, got, want) {
+      if (JSON.stringify(got) === JSON.stringify(want)) pass++;
+      else fails.push({ eng: eng, what: what, got: JSON.stringify(got), want: JSON.stringify(want) });
+    }
+    function bitsEq(eng, r, got, want) {
+      for (var i = 0; i < want.length; i++) eq(eng, r + ' against ' + V.versions[i], got[i], want[i]);
+    }
+    function tryMsg(f) { try { return [1, f()]; } catch (e) { return [0, e.message]; } }
+    var vs = V.versions;
+    // npm
+    V.npm.v.forEach(function (x) { var g = tryMsg(function () { return new E.NPM.Ver(x[0]).version; }); eq('npm', 'version ' + x[0], g[0] ? g[1] : null, x[1]); });
+    V.npm.r.forEach(function (x) {
+      var g = tryMsg(function () { return new E.NPM.Range(x[0]); });
+      eq('npm', 'range ' + x[0], [g[0], g[0] ? g[1].range : g[1]], [x[1], x[2]]);
+      if (g[0] && x[1]) bitsEq('npm', x[0], vs.map(function (v) { var w = tryMsg(function () { return new E.NPM.Ver(v); }); return w[0] ? (g[1].test(w[1]) ? '1' : '0') : '-'; }).join(''), x[3]);
+    });
+    // cargo
+    V.cargo.v.forEach(function (x) { var g = tryMsg(function () { return new E.CARGO.Ver(x[0]).toString(); }); eq('Cargo', 'version ' + x[0], g[0] ? g[1] : null, x[1]); });
+    V.cargo.r.forEach(function (x) {
+      var g = tryMsg(function () { return new E.CARGO.Req(x[0]); });
+      eq('Cargo', 'requirement ' + x[0], [g[0], g[0] ? g[1].toString() : g[1]], [x[1], x[2]]);
+      if (g[0] && x[1]) bitsEq('Cargo', x[0], vs.map(function (v) { var w = tryMsg(function () { return new E.CARGO.Ver(v); }); return w[0] ? (g[1].matches(w[1]) ? '1' : '0') : '-'; }).join(''), x[3]);
+    });
+    V.cargo.up.forEach(function (x) {
+      var k = x[0];
+      if (k === 'ok') eq('Cargo upstream', 'parses ' + x[1], tryMsg(function () { return new E.CARGO.Req(x[1]); })[0], 1);
+      else if (k === 'str') eq('Cargo upstream', 'to_string ' + x[1], new E.CARGO.Req(x[1]).toString(), x[2]);
+      else if (k === 'err') eq('Cargo upstream', 'error ' + JSON.stringify(x[1]), tryMsg(function () { return new E.CARGO.Req(x[1]); })[1], x[2]);
+      else if (k === 'match') eq('Cargo upstream', x[1] + ' matches ' + x[2], new E.CARGO.Req(x[1]).matches(new E.CARGO.Ver(x[2])), x[3]);
+      else if (k === 'same') eq('Cargo upstream', x[1] + ' equals ' + x[2], new E.CARGO.Req(x[1]).toString(), new E.CARGO.Req(x[2]).toString());
+    });
+    // composer
+    var C = E.COMPOSER;
+    V.composer.v.forEach(function (x) {
+      var g = tryMsg(function () { return C.normalize(x[0]); });
+      eq('Composer', 'normalize ' + x[0], g[0] ? g[1] : null, x[1]);
+      if (x[1] !== null) eq('Composer', 'stability ' + x[0], C.parseStability(x[0]), x[2]);
+    });
+    V.composer.r.forEach(function (x) {
+      var g = tryMsg(function () { return C.parseConstraints(x[0]); });
+      eq('Composer', 'constraint ' + x[0], [g[0], g[0] ? C.str(g[1].tree) : g[1]], [x[1], x[2]]);
+      if (g[0] && x[1]) bitsEq('Composer', x[0], vs.map(function (v) { var w = tryMsg(function () { return C.normalize(v); }); return w[0] ? (C.match(g[1].tree, w[1]) ? '1' : '0') : '-'; }).join(''), x[3]);
+    });
+    V.composer.vc.forEach(function (x) { eq('PHP version_compare', JSON.stringify(x[0]) + ' vs ' + JSON.stringify(x[1]), E.PHPV.compare(x[0], x[1]), x[2]); });
+    // Root-requirement stability flags, expected values from composer/composer 2.10.3
+    // RootPackageLoader::extractStabilityFlags run under PHP with composer/semver 3.5.0.
+    COMPOSER_ROOT_FLAGS.forEach(function (x) { var f = C.rootFlags(x[0]); eq('Composer root flags', x[0], [f.explicit ? 'explicit' : 'inferred', f.explicit || f.inferred], [x[1], x[2]]); });
+    [['^1.2.3-beta.2', '1.2.3-beta.5', true], ['^1.2.3-beta.2', '1.2.4-rc.1', true], ['>=1.2-beta', '1.3.0-RC1', true], ['>=1.2-beta', '2.0.0-alpha', false],
+     ['1.3.0-RC1', '1.3.0-RC1', true], ['>=1.2-beta <2', '1.2.3-beta.5', true], ['1.0-beta - 2.0', '1.2.3-beta.5', false], ['~1.2', '1.2.4-rc.1', false]].forEach(function (x) {
+      var p = composer.read(x[0]), vv = composer.ver(x[1]), m = composer.match(p, vv);
+      eq('Composer admitted', x[0] + ' admits ' + x[1], composer.admit(p, vv, {}, m).ok, x[2]);
+    });
+    // pep
+    var P = E.PEP;
+    V.pep.v.forEach(function (x) { var w = P.tryVer(x[0]); eq('PEP 440', 'version ' + x[0], w ? w.toString() : null, x[1]); });
+    V.pep.r.forEach(function (x) {
+      var g = tryMsg(function () { return new P.SpecSet(x[0]); });
+      eq('PEP 440', 'specifier ' + x[0], [g[0], g[0] ? g[1].toString() : g[1]], [x[1], x[2]]);
+      if (!(g[0] && x[1])) return;
+      bitsEq('PEP 440', x[0], vs.map(function (v) { return P.tryVer(v) ? (g[1].allMatch(v) ? '1' : '0') : '-'; }).join(''), x[3]);
+      var kept = g[1].filter(vs, null);
+      bitsEq('PEP 440', x[0] + ' (filter)', vs.map(function (v) { return P.tryVer(v) ? (kept.indexOf(v) !== -1 ? '1' : '0') : '-'; }).join(''), x[4]);
+    });
+    V.pep.f.forEach(function (x) {
+      var S = new P.SpecSet(x[0]);
+      eq('PEP 440', 'filter ' + x[0] + ' over ' + x[1].join(' '), S.filter(x[1], null), x[2]);
+      eq('PEP 440', 'filter --pre ' + x[0] + ' over ' + x[1].join(' '), S.filter(x[1], true), x[3]);
+    });
+    // ruby
+    var R = E.RUBY;
+    V.ruby.v.forEach(function (x) { var g = tryMsg(function () { return new R.Ver(x[0]).version; }); eq('RubyGems', 'version ' + JSON.stringify(x[0]), g[0] ? g[1] : null, x[1]); });
+    V.ruby.r.forEach(function (x) {
+      var g = tryMsg(function () { return new R.Req(x[0].split(',')); });
+      eq('RubyGems', 'requirement ' + JSON.stringify(x[0]), [g[0], g[0] ? g[1].toString() : g[1]], [x[1], x[2]]);
+      if (!(g[0] && x[1])) return;
+      bitsEq('RubyGems', x[0], vs.map(function (v) { var w = tryMsg(function () { return new R.Ver(v); }); return w[0] ? (g[1].satisfiedBy(w[1]) ? '1' : '0') : '-'; }).join(''), x[3]);
+      bitsEq('RubyGems', x[0] + ' (Dependency#match?)', vs.map(function (v) { var w = tryMsg(function () { return new R.Ver(v); }); return w[0] ? (g[1].depMatch(w[1]) ? '1' : '0') : '-'; }).join(''), x[4]);
+    });
+    V.ruby.up.forEach(function (x) {
+      var k = x[0], got;
+      try {
+        if (k === 'sat') got = new R.Req(x[1]).satisfiedBy(new R.Ver(x[2])) === x[3];
+        else if (k === 'reqpre') got = new R.Req(x[1]).isPre() === x[2];
+        else if (k === 'parse') { var q = new R.Req([x[1]]).reqs[0]; got = q[0] === x[2] && R.cmp(q[1], new R.Ver(x[3])) === 0; }
+        else if (k === 'badreq') got = tryMsg(function () { return new R.Req([x[1]]); })[1] === 'Illformed requirement [' + JSON.stringify(x[1]) + ']';
+        else if (k === 'bump') got = R.cmp(new R.Ver(x[1]).bump(), new R.Ver(x[2])) === 0;
+        else if (k === 'release') got = R.cmp(new R.Ver(x[1]).release(), new R.Ver(x[2])) === 0;
+        else if (k === 'pre') got = new R.Ver(x[1]).isPre() === x[2];
+        else if (k === 'cmp') { var c = R.cmp(new R.Ver(x[1]), new R.Ver(x[2])); got = x[3] === 'ne' ? c !== 0 : c === x[3]; }
+        else if (k === 'correct') got = R.correct(x[1]) === x[2];
+        else if (k === 'canon') got = JSON.stringify(new R.Ver(x[1]).canon().map(function (s) { return typeof s === 'bigint' ? Number(s) : s; })) === JSON.stringify(x[2]);
+        else if (k === 'badver') got = tryMsg(function () { return new R.Ver(x[1]); })[1] === 'Malformed version number string ' + x[1];
+        else if (k === 'ver') got = new R.Ver(x[1]).version === x[2];
+      } catch (e) { got = false; }
+      eq('RubyGems upstream', k + ' ' + JSON.stringify(x.slice(1)), got, true);
+    });
+    return { pass: pass, total: pass + fails.length, fails: fails };
+  }
+
+  return { ECOS: ECOS, BY: BY, evaluate: evaluate, translate: translate, selfTest: selfTest, outcome: outcome, admitWord: admitWord,
+    limits: { MAX_RANGE: MAX_RANGE, MAX_LINES: MAX_LINES, MAX_LINE: MAX_LINE } };
+})();
+
+// ------------------------------------------------------------ UI
+(function () {
+  'use strict';
+  if (typeof document === 'undefined') return;
+  var A = VRTAPP;
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  var DEFAULT_LINES = ['1.1.0', '1.2.0', '1.2.9', '1.3.0', '1.9.0', '2.0.0', '1.3.0-rc.1', '1.3.0rc1', '1.2', 'v1.2.3', '1.2.3.4'];
+  var PRESETS = [
+    { r: '~1.2', v: DEFAULT_LINES },
+    { r: '~>1.2', v: DEFAULT_LINES },
+    { r: '~=1.2', v: DEFAULT_LINES },
+    { r: '1.2', v: ['1.2.0', '1.2.1', '1.2.9', '1.9.0', '2.0.0', '1.2'] },
+    { r: '^1.2.3-beta.2', v: ['1.2.3-beta.2', '1.2.3-beta.5', '1.2.3', '1.2.4-rc.1', '1.9.0', '2.0.0'] },
+    { r: '>=1.2 || <1.0', v: ['0.9.0', '1.0.0', '1.1.0', '1.3.0', '2.0.0'] },
+    { r: '>=1.2, <1.5', v: ['1.2.0', '1.4.9', '1.5.0', '1.5.0rc1', '1.5.0-rc.1'] },
+    { r: '>=1.2', v: ['1.3.0rc1', '1.2.0'] }
+  ];
+
+  var lastRes = null, lastLines = [];
+
+  function readLines() {
+    var raw = $('versions').value.split(/\r?\n/), seen = {}, out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var t = raw[i];
+      if (!t.trim()) continue;
+      if (Object.prototype.hasOwnProperty.call(seen, t)) continue;
+      seen[t] = 1; out.push(t);
+    }
+    return out;
+  }
+
+  function render() {
+    var err = $('inerr'); err.textContent = '';
+    var range = $('range').value, lines = readLines(), problems = [];
+    if (!range.trim()) problems.push('Enter a version range, for example ~1.2 or >=1.2, <1.5.');
+    if (range.length > A.limits.MAX_RANGE) problems.push('The range is longer than ' + A.limits.MAX_RANGE + ' characters.');
+    if (!lines.length) problems.push('Enter at least one test version, one per line.');
+    if (lines.length > A.limits.MAX_LINES) problems.push('Use at most ' + A.limits.MAX_LINES + ' test versions.');
+    if (lines.some(function (l) { return l.length > A.limits.MAX_LINE; })) problems.push('Each test version must be at most ' + A.limits.MAX_LINE + ' characters.');
+    if (problems.length) {
+      err.textContent = problems.join(' ');
+      clear($('cards')); clear($('divstrip')); $('divstrip').textContent = 'Nothing to compare yet.';
+      clear($('tbl').tHead); clear($('tbl').tBodies[0]); clear($('trout'));
+      lastRes = null;
+      return;
+    }
+    var res = A.evaluate(range, lines, $('pre').checked);
+    lastRes = res; lastLines = lines;
+    renderCards(res); renderTable(res, lines); renderDiv(res, lines); renderTr();
+  }
+
+  function renderCards(res) {
+    var host = $('cards'); clear(host);
+    res.ecos.forEach(function (x) {
+      var c = el('section', 'card'); c.setAttribute('aria-label', x.eco.name + ' reading');
+      c.appendChild(el('div', 'nm', x.eco.name));
+      c.appendChild(el('div', 'impl', x.eco.impl));
+      c.appendChild(el('span', 'tag ' + (x.p.ok ? 'v' : 'r'), x.p.ok ? 'VALID' : 'REFUSED'));
+      if (!x.p.ok) {
+        c.appendChild(el('div', 'val', x.p.hint));
+        c.appendChild(el('div', 'k', 'Engine message'));
+        c.appendChild(el('div', 'val mono', x.p.err));
+      } else {
+        c.appendChild(el('div', 'k', 'Native reading'));
+        c.appendChild(el('div', 'val mono', x.p.native));
+        c.appendChild(el('div', 'k', 'Plain comparators'));
+        c.appendChild(el('div', 'val mono', x.p.groups.map(function (g) {
+          return g.map(function (cmp) { return cmp[0] === '*' ? 'any version' : cmp[0] + ' ' + cmp[1]; }).join(', ');
+        }).join('  OR  ')));
+        if (x.p.notes.length) {
+          var ul = el('ul', 'notes');
+          x.p.notes.forEach(function (n) { ul.appendChild(el('li', null, n)); });
+          c.appendChild(ul);
+        }
+      }
+      host.appendChild(c);
+    });
+  }
+
+  function cellOutcome(r) { return A.outcome(r) + (r.a && r.m && !r.a.ok ? ', held back' : ''); }
+
+  function renderTable(res, lines) {
+    var tbl = $('tbl'), thead = tbl.tHead, tb = tbl.tBodies[0];
+    clear(thead); clear(tb);
+    var hr = el('tr');
+    hr.appendChild(el('th', null, 'Test version')).setAttribute('scope', 'col');
+    res.ecos.forEach(function (x) { var th = el('th', null, x.eco.name + (x.p.ok ? '' : ' (refused)')); th.setAttribute('scope', 'col'); hr.appendChild(th); });
+    thead.appendChild(hr);
+    lines.forEach(function (t, i) {
+      var tr = el('tr'), th = el('th', null, t); th.setAttribute('scope', 'row');
+      var outs = res.ecos.filter(function (x) { return x.p.ok; }).map(function (x) { return cellOutcome(x.rows[i]); });
+      var differs = outs.some(function (o) { return o !== outs[0]; });
+      if (differs) { tr.className = 'diff'; th.appendChild(el('span', 'small', ' (differs)')); }
+      tr.appendChild(th);
+      res.ecos.forEach(function (x) {
+        var r = x.rows[i], td = el('td', 'cell');
+        td.appendChild(el('div', 'p', r.vv.ok ? 'parsed as ' + r.vv.norm + (r.vv.pre ? ' (pre-release)' : '') : 'not a valid version here: ' + r.vv.why));
+        if (!x.p.ok) td.appendChild(el('div', 'm soft', 'range refused'));
+        else if (r.vv.ok) {
+          td.appendChild(el('div', 'm ' + (r.m ? 'okc' : 'soft'), r.m ? 'matches' : 'no match'));
+          td.appendChild(el('div', 'a ' + (r.a.ok ? 'okc' : r.m ? 'warnc' : 'soft'), (r.a.ok ? 'admitted: ' : 'not admitted: ') + r.a.why));
+        }
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  function renderDiv(res, lines) {
+    var host = $('divstrip'); clear(host);
+    var valid = res.ecos.filter(function (x) { return x.p.ok; });
+    var refused = res.ecos.filter(function (x) { return !x.p.ok; }).map(function (x) { return x.eco.name; });
+    var items = [];
+    lines.forEach(function (t, i) {
+      var outs = valid.map(function (x) { return { n: x.eco.name, o: cellOutcome(x.rows[i]) }; });
+      if (outs.some(function (o) { return o.o !== outs[0].o; })) items.push({ t: t, outs: outs });
+    });
+    var head = el('p', null);
+    head.appendChild(el('strong', null, items.length + ' of ' + lines.length + ' test versions get different answers'));
+    head.appendChild(document.createTextNode(' across the ' + valid.length + ' valid column' + (valid.length === 1 ? '' : 's') + '.' + (refused.length ? ' Refused: ' + refused.join(', ') + '.' : '')));
+    host.appendChild(head);
+    if (items.length) {
+      var ul = el('ul');
+      items.forEach(function (it) {
+        var li = el('li');
+        li.appendChild(el('code', null, it.t));
+        li.appendChild(document.createTextNode(': ' + it.outs.map(function (o) { return o.n + ' ' + o.o; }).join('; ')));
+        ul.appendChild(li);
+      });
+      host.appendChild(ul);
+    }
+  }
+
+  function renderTr() {
+    var host = $('trout'); clear(host);
+    if (!lastRes) return;
+    var t = A.translate($('src').value, lastRes, lastLines);
+    if (t.refused) { host.appendChild(el('p', 'strip', t.refused)); return; }
+    if (t.notes.length) { var nu = el('ul', 'small'); t.notes.forEach(function (n) { nu.appendChild(el('li', null, n)); }); host.appendChild(nu); }
+    var grid = el('div', 'trgrid');
+    t.outs.forEach(function (o) {
+      var c = el('section', 'tr'); c.setAttribute('aria-label', o.eco.name + ' spelling');
+      c.appendChild(el('h3', null, o.eco.name + (o.eco.id === t.src.eco.id ? ' (source, re-read)' : '')));
+      if (o.err) { c.appendChild(el('p', 'err', 'Not emitted: ' + o.err + '.')); grid.appendChild(c); return; }
+      var shown = o.eco.id === 'ruby' ? o.str.split(', ').map(function (s) { return "'" + s + "'"; }).join(', ') : o.str;
+      c.appendChild(el('code', null, shown));
+      if (o.refusedHere) { c.appendChild(el('p', 'err', 'This spelling is refused here: ' + o.refusedHere)); grid.appendChild(c); return; }
+      var p = el('p', o.agree === o.total ? 'okc' : 'warnc');
+      p.appendChild(el('strong', null, 'Agrees with the source on ' + o.agree + ' of ' + o.total + ' test versions.'));
+      c.appendChild(p);
+      if (o.dis.length) {
+        var ul = el('ul');
+        o.dis.forEach(function (d) { var li = el('li'); li.appendChild(el('code', null, d.t)); li.appendChild(document.createTextNode(': source ' + d.a + ', here ' + d.b)); ul.appendChild(li); });
+        c.appendChild(ul);
+      }
+      grid.appendChild(c);
+    });
+    host.appendChild(grid);
+  }
+
+  function runSelfTest() {
+    var out = $('stout'); clear(out);
+    var r;
+    try { r = A.selfTest(); } catch (e) { out.appendChild(el('p', 'err', 'Self test crashed: ' + e.message)); return; }
+    var s = el('div', 'score ' + (r.fails.length ? 'err' : 'okc'), r.pass + ' of ' + r.total + ' vectors pass');
+    out.appendChild(s);
+    if (r.fails.length) {
+      out.appendChild(el('p', 'err', r.fails.length + ' failing. Every failing row is listed below.'));
+      var ul = el('ul');
+      r.fails.forEach(function (f) { ul.appendChild(el('li', 'err', f.eng + ': ' + f.what + '. Got ' + f.got + ', expected ' + f.want + '.')); });
+      out.appendChild(ul);
+    }
+  }
+
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('vrt-theme', t); } catch (e) { /* storage blocked */ }
+  }
+
+  function init() {
+    $('versions').value = DEFAULT_LINES.join('\n');
+    ['range', 'versions'].forEach(function (id) { $(id).addEventListener('input', render); });
+    $('pre').addEventListener('change', render);
+    $('src').addEventListener('change', renderTr);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function (b) {
+      b.addEventListener('click', function () {
+        var p = PRESETS[Number(b.getAttribute('data-preset'))];
+        $('range').value = p.r; $('versions').value = p.v.join('\n');
+        $('pre').checked = false;
+        render();
+      });
+    });
+    $('runtest').addEventListener('click', runSelfTest);
+    $('theme-toggle').addEventListener('click', function () {
+      setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+    render();
+    runSelfTest();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+/* APP-END */
+</script>
+</body>
+</html>
